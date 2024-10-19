@@ -1,2 +1,2 @@
 # hgraph_platform_tools
-Public repository to add tools for tools to automate commodities trading workflows using the hgraph framework
+Public repository to build tools to automate commodities trading workflows using the hgraph framework
