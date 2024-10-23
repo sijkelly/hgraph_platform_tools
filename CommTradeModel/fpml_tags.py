@@ -1,7 +1,7 @@
 from typing import Dict, Any
 import xml.etree.ElementTree as ET
 
-# FPML tag dictionary for Commodity Swaps with explanations for each tag
+# FPML tag dictionary for Commodity Swaps with explanations for each tag taken from https://www.fpml.org/spec/fpml-5-3-6-rec-1/html/confirmation/fpml-5-3-intro-16.html
 FPML_TAGS = {
     # The tradeHeader contains information about the trade itself, such as the trade date and identifiers
     "tradeHeader": {
@@ -37,12 +37,29 @@ FPML_TAGS = {
         },
         # paymentCurrency specifies the currency in which the swap is denominated (e.g., USD, EUR)
         "paymentCurrency": "currency",
-        # fixedLeg contains details about the fixed leg of the swap
+        # buySell specifies the direction of the swap
+        "buySell": "str",
+        # fixedLeg contains details about the fixed leg of the swap.
+        "CommodityUnderlyer": {
+            # commodityBase element identifies the base type of the commodity being traded, for example 'Oil'.": "float",
+            "commodityBase": "str",
+            # commodityDetails also identifies the type of commodity but it is more specific than the base, for example 'Brent'
+            "commodityDetails": "str",
+            # unit element identifies the unit in which the underlyer is denominated
+            "unit": "str",
+            # currency identifies the currency in which the Commodity Reference Price is published
+            "currency": "currency",
+            # 'Either the 'exchange' or the 'publication' is specified. For those commodities being traded with reference to the price of a listed future, the exchange where that future is listed should be specified in the 'exchange' element. On the other hand, for those commodities being traded with reference to a price distributed by a publication, that publication should be specified in the 'publication' element.  Not FPML standard
+            "referencePrice": "str",
+
+        },
         "fixedLeg": {
             # fixedPrice refers to the fixed price at which the commodity is traded in the swap
             "fixedPrice": "float",
             # priceUnit specifies the unit for the fixed price (e.g., USD per barrel)
-            "priceUnit": "str"
+            "priceUnit": "str",
+            # fixedPriceSchedule allows the specification of a Fixed Price that varies over the life of the trade.
+            "fixedPriceSchedule": "str",
         },
         # floatLeg contains details about the floating leg of the swap
         "floatLeg": {
@@ -52,6 +69,16 @@ FPML_TAGS = {
             "resetDates": "date"
         },
         # terminationDate is the end date of the swap when it matures
-        "terminationDate": "date"
+        "terminationDate": "date",
+        "CommodityContent": {
+            # Common pricing may be relevant for a Transaction that references more than one Commodity Reference Price. If Common Pricing is not specified as applicable, it will be deemed not to apply.
+            "commonPricing": "str",
+            # Market disruption events as defined in the ISDA 1993 Commodity Definitions or in ISDA 2005 Commodity Definitions, as applicable.
+            "marketDisruption": "str",
+            # Rounding direction and precision for amounts.
+            "marketDisruption": "float",
+            # The consequences of Bullion Settlement Disruption Events.
+            "settlementDisruption": "float",
+
     }
 }
