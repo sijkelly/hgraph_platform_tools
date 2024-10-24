@@ -1,4 +1,4 @@
-# Example Commodity Swap structure
+# Example Commodity Swap structure from ChatGPT, this is to be built using the fpml tags once it has been fully and correctly imported
 def create_commodity_swap(trade_data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Create a commodity swap based on trade data.
