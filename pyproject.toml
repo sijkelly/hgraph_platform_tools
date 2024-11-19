@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "poetry config virtualenvs-in-project true"
+version = "poetry add pandas numpy pymongo hgraph"
+description = ""
+authors = ["Simon Kelly <si.j.kelly@gmail.com>"]
+readme = "README.md"
+packages = [{include = "poetry config virtualenvs"}]
+
+[tool.poetry.dependencies]
+python = "^3.13"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
