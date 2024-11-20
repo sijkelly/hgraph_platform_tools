@@ -1,0 +1,76 @@
+{
+    "messageHeader": {
+        "messageHeader": {
+            "messageType": "NewTrade",
+            "senderCompID": "DefaultSender",
+            "targetCompID": "DefaultTarget",
+            "sendingTime": "2024-11-20T21:51:09.326101Z",
+            "messageVersion": "1.0"
+        }
+    },
+    "tradeHeader": {
+        "tradeHeader": {
+            "partyTradeIdentifier": {
+                "partyReference": "",
+                "tradeId": "hgraph-SWAP-001"
+            },
+            "tradeDate": "2024-11-20",
+            "parties": [
+                {
+                    "internalParty": ""
+                },
+                {
+                    "externalParty": ""
+                }
+            ],
+            "portfolio": {
+                "internalPortfolio": "",
+                "externalPortfolio": ""
+            },
+            "trader": {
+                "internalTrader": "",
+                "externalTrader": ""
+            }
+        },
+        "metadata": {
+            "type": "tradeHeader",
+            "version": "1.0"
+        }
+    },
+    "tradeEconomics": {
+        "commoditySwap": {
+            "buySell": "buy",
+            "effectiveDate": "2024-12-01",
+            "terminationDate": "2025-12-01",
+            "underlyer": "",
+            "notionalQuantity": {
+                "quantity": "",
+                "unit": ""
+            },
+            "paymentCurrency": "usd",
+            "fixedLeg": {
+                "fixedPrice": "",
+                "priceUnit": ""
+            },
+            "floatLeg": {
+                "referencePrice": "",
+                "resetDates": []
+            }
+        }
+    },
+    "tradeFooter": {
+        "tradeFooter": {
+            "placeholderField1": "",
+            "placeholderField2": ""
+        },
+        "metadata": {
+            "type": "tradeFooter",
+            "version": "1.0"
+        }
+    },
+    "messageFooter": {
+        "messageFooter": {
+            "checksum": null
+        }
+    }
+}
