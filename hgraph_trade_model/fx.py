@@ -2,7 +2,7 @@ import json
 from typing import Dict, Any
 
 
-def create_fx_trade(trade_data: dict[str, Any]) -> Dict[str, Any]:
+def create_fx_trade(trade_data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Create the FX trade section.
 
@@ -36,18 +36,21 @@ def create_fx_trade(trade_data: dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-# Example usage
-sample_trade_data = {
-    "buySell": "Buy",
-    "tradeDate": "2024-11-20",
-    "settlementDate": "2024-11-22",
-    "currencyPair": "EUR/USD",
-    "notionalAmount": 1000000,
-    "currency": "EUR",
-    "rate": 1.10
-}
+# Example usage for testing
+if __name__ == "__main__":
+    # Sample FX trade data
+    sample_trade_data = {
+        "buySell": "Buy",
+        "tradeDate": "2024-11-20",
+        "settlementDate": "2024-11-22",
+        "currencyPair": "EUR/USD",
+        "notionalAmount": 1000000,
+        "currency": "EUR",
+        "rate": 1.10
+    }
 
-fx_trade = create_fx_trade(sample_trade_data)
+    # Generate FX trade data structure
+    fx_trade = create_fx_trade(sample_trade_data)
 
-# Print the generated FX trade
-print(json.dumps(fx_trade, indent=4))
+    # Print the generated FX trade
+    print(json.dumps(fx_trade, indent=4))

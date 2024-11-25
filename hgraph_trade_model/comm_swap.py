@@ -1,15 +1,21 @@
 import json
 from typing import Dict, Any
 
-# Define the mapping between hgraph tags and fpml tags
+# Define the mapping for instrument types
+INSTRUMENT_TYPE_MAPPING = {
+    "fixed_float": "fixedFloat",
+    "float_float": "floatFloat",
+}
+
+# Updated HGRAPH_TO_FPML_SWAP_MAPPING
 HGRAPH_TO_FPML_SWAP_MAPPING = {
     "buy_sell": "buySell",
     "swap_type": "instrument",
     "effective_date": "effectiveDate",
     "termination_date": "terminationDate",
     "underlyer": "underlyer",
-    "notional_quantity": "notionalQuantity",
-    "notional_unit": "notionalUnit",
+    "notional_quantity": "quantity",
+    "notional_unit": "unit",
     "currency": "paymentCurrency",
     "price_unit": "priceUnit",
     "fixed_leg_price": "fixedPrice",
@@ -20,13 +26,10 @@ HGRAPH_TO_FPML_SWAP_MAPPING = {
     "float_leg2_reference": "floatLeg2Reference",
     "float_leg2_reset_dates": "floatLeg2ResetDates",
     "float_leg2_spread": "spread",
+    "commodity": "commodity",
+    "asset": "asset"
 }
 
-# Add a mapping for instrument type specifically
-INSTRUMENT_TYPE_MAPPING = {
-    "fixed_float": "fixedFloat",
-    "float_float": "floatFloat",
-}
 
 def map_hgraph_to_fpml(trade_data: Dict[str, Any], mapping: Dict[str, str]) -> Dict[str, Any]:
     """
@@ -38,7 +41,7 @@ def map_hgraph_to_fpml(trade_data: Dict[str, Any], mapping: Dict[str, str]) -> D
     """
     mapped_data = {}
     for key, value in trade_data.items():
-        if key == "instrument":  # Handle instrument mapping separately
+        if key == "instrument":  # Handle the instrument field mapping
             mapped_data[mapping.get(key, key)] = INSTRUMENT_TYPE_MAPPING.get(value, value)
         else:
             mapped_data[mapping.get(key, key)] = value
@@ -54,13 +57,16 @@ def create_commodity_swap(trade_data: Dict[str, Any]) -> Dict[str, Any]:
     """
     # Map hgraph keys to fpml keys
     fpml_data = map_hgraph_to_fpml(trade_data, HGRAPH_TO_FPML_SWAP_MAPPING)
+    print(f"DEBUG: Mapped FPML trade data: {fpml_data}")
 
     swap = {"buySell": fpml_data.get("buySell", "")}
 
-    # Handle different swap types
+    # Detect instrument type
     instrument_type = fpml_data.get("instrument")
+    print(f"DEBUG: Detected instrument type: {instrument_type}")
+
     if instrument_type == "fixedFloat":
-        # Fixed-Float Swap
+        # Handle fixed-float swap
         swap.update({
             "effectiveDate": fpml_data.get("effectiveDate", ""),
             "terminationDate": fpml_data.get("terminationDate", ""),
@@ -80,7 +86,7 @@ def create_commodity_swap(trade_data: Dict[str, Any]) -> Dict[str, Any]:
             }
         })
     elif instrument_type == "floatFloat":
-        # Float-Float Swap (Basis Swap)
+        # Handle float-float swap
         swap.update({
             "notionalQuantity": {
                 "quantity": fpml_data.get("notionalQuantity", ""),
@@ -104,14 +110,18 @@ def create_commodity_swap(trade_data: Dict[str, Any]) -> Dict[str, Any]:
             }
         })
     else:
-        raise ValueError(f"Unsupported instrument type: {instrument_type}")
+        raise ValueError(
+            f"Unsupported instrument type: {instrument_type}. "
+            f"Ensure `instrument` is mapped to: {list(INSTRUMENT_TYPE_MAPPING.values())}"
+        )
 
     return {"commoditySwap": swap}
 
 
-# Example usage
+# Example usage (isolated)
 if __name__ == "__main__":
-    sample_trade_data = {
+    # Example for a fixed-float swap
+    fixed_float_trade = {
         "buy_sell": "Buy",
         "swap_type": "fixed_float",
         "effective_date": "2024-12-01",
@@ -123,8 +133,10 @@ if __name__ == "__main__":
         "price_unit": "USD per barrel",
         "fixed_leg_price": 85.50,
         "float_leg_reference": "Brent",
-        "reset_dates": ["2024-12-15", "2025-01-15"]
+        "reset_dates": ["2024-12-15", "2025-01-15"],
+        "commodity": "Oil",
+        "asset": "Energy"
     }
 
-    commodity_swap = create_commodity_swap(sample_trade_data)
+    commodity_swap = create_commodity_swap(fixed_float_trade)
     print(json.dumps(commodity_swap, indent=4))

@@ -16,25 +16,11 @@ from typing import Dict, Any
 exercise_styles = ["European", "American", "Bermudan"]  # Placeholder values
 
 
-def create_commodity_option(trade_data: dict[str, Any]) -> Dict[str, Any]:
+def create_commodity_option(trade_data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Create the commodity option section based on the option type.
 
     :param trade_data: Dictionary containing trade data.
-        Expected keys vary based on optionType:
-        - optionType (str): "European", "American", or "Bermudan".
-        - buySell (str): Buy or sell indicator.
-        - effectiveDate (str): Option start date.
-        - expirationDate (str): Option expiration date.
-        - underlyer (str): Underlying asset.
-        - notionalQuantity (float): Quantity of the commodity.
-        - notionalUnit (str): Unit of the notional quantity.
-        - currency (str): Payment currency.
-        - priceUnit (str): Unit for pricing.
-        - strikePrice (float): Strike price of the option.
-        - exerciseDates (list[str]): Exercise dates (only for Bermudan).
-        - premiumPaymentDate (str): Date of premium payment.
-        - premiumPerUnit (float): Premium per unit.
     :return: A dictionary representing the commodity option.
     """
     # Calculate total premium if not explicitly provided
@@ -76,28 +62,30 @@ def create_commodity_option(trade_data: dict[str, Any]) -> Dict[str, Any]:
     return {"commodityOption": option}
 
 
-# Example usage
-sample_trade_data = {
-    "tradeId": "OPT-002",
-    "tradeDate": "2024-11-15",
-    "partyReference": "Party1",
-    "buySell": "Buy",
-    "optionType": "Bermudan",
-    "effectiveDate": "2024-12-01",
-    "expirationDate": "2025-12-01",
-    "underlyer": "Gold",
-    "notionalQuantity": 5000,
-    "notionalUnit": "ounces",
-    "currency": "USD",
-    "priceUnit": "USD per ounce",
-    "strikePrice": 1900.00,
-    "premiumPaymentDate": "2024-12-05",
-    "premiumPerUnit": 25.50,
-    "exerciseDates": ["2025-06-01", "2025-09-01", "2025-12-01"]
-}
+# Example usage (isolated to prevent execution during import)
+if __name__ == "__main__":
+    # Sample trade data for testing
+    sample_trade_data = {
+        "tradeId": "OPT-002",
+        "tradeDate": "2024-11-15",
+        "partyReference": "Party1",
+        "buySell": "Buy",
+        "optionType": "Bermudan",
+        "effectiveDate": "2024-12-01",
+        "expirationDate": "2025-12-01",
+        "underlyer": "Gold",
+        "notionalQuantity": 5000,
+        "notionalUnit": "ounces",
+        "currency": "USD",
+        "priceUnit": "USD per ounce",
+        "strikePrice": 1900.00,
+        "premiumPaymentDate": "2024-12-05",
+        "premiumPerUnit": 25.50,
+        "exerciseDates": ["2025-06-01", "2025-09-01", "2025-12-01"]
+    }
 
-# Generate the commodity option
-commodity_option = create_commodity_option(sample_trade_data)
+    # Generate the commodity option
+    commodity_option = create_commodity_option(sample_trade_data)
 
-# Print the generated commodity option
-print(json.dumps(commodity_option, indent=4))
+    # Print the generated commodity option
+    print(json.dumps(commodity_option, indent=4))

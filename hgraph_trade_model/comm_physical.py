@@ -22,14 +22,16 @@ def create_commodity_physical(trade_data: dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-# Example usage
-sample_trade_data = {
-    # Add sample trade data for testing
-    "placeholderField1": "Value1",
-    "placeholderField2": "Value2"
-}
+# Example usage (isolated)
+if __name__ == "__main__":
+    # Sample trade data for testing
+    sample_trade_data = {
+        "placeholderField1": "Value1",
+        "placeholderField2": "Value2"
+    }
 
-commodity_physical = create_commodity_physical(sample_trade_data)
+    # Generate the commodity physical trade
+    commodity_physical = create_commodity_physical(sample_trade_data)
 
-# Print the generated commodity physical trade
-print(json.dumps(commodity_physical, indent=4))
+    # Print the generated commodity physical trade
+    print(json.dumps(commodity_physical, indent=4))

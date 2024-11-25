@@ -22,14 +22,16 @@ def create_commodity_swaption(trade_data: dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-# Example usage
-sample_trade_data = {
-    # Add sample trade data for testing
-    "placeholderField1": "Value1",
-    "placeholderField2": "Value2"
-}
+# Example usage (isolated)
+if __name__ == "__main__":
+    # Sample trade data for testing
+    sample_trade_data = {
+        "placeholderField1": "Value1",
+        "placeholderField2": "Value2"
+    }
 
-commodity_swaption = create_commodity_swaption(sample_trade_data)
+    # Generate the commodity swaption trade
+    commodity_swaption = create_commodity_swaption(sample_trade_data)
 
-# Print the generated commodity swaption trade
-print(json.dumps(commodity_swaption, indent=4))
+    # Print the generated commodity swaption trade
+    print(json.dumps(commodity_swaption, indent=4))

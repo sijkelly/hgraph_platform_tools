@@ -40,24 +40,26 @@ def create_commodity_future(trade_data: dict[str, Any]) -> Dict[str, Any]:
     return {"commodityFuture": future}
 
 
-# Example usage
-sample_trade_data = {
-    "tradeId": "FUTURE-001",
-    "tradeDate": "2024-11-20",
-    "buySell": "Buy",
-    "expiryDate": "2025-12-01",
-    "underlyer": "Crude Oil",
-    "notionalQuantity": 500,
-    "notionalUnit": "barrels",
-    "currency": "USD",
-    "priceUnit": "USD per barrel",
-    "contractPrice": 75.00,
-    "exchange": "NYMEX",
-    "deliveryLocation": "Cushing, OK"
-}
+# Example usage (isolated)
+if __name__ == "__main__":
+    # Sample trade data for testing
+    sample_trade_data = {
+        "tradeId": "FUTURE-001",
+        "tradeDate": "2024-11-20",
+        "buySell": "Buy",
+        "expiryDate": "2025-12-01",
+        "underlyer": "Crude Oil",
+        "notionalQuantity": 500,
+        "notionalUnit": "barrels",
+        "currency": "USD",
+        "priceUnit": "USD per barrel",
+        "contractPrice": 75.00,
+        "exchange": "NYMEX",
+        "deliveryLocation": "Cushing, OK"
+    }
 
-# Generate the commodity future
-commodity_future = create_commodity_future(sample_trade_data)
+    # Generate the commodity future
+    commodity_future = create_commodity_future(sample_trade_data)
 
-# Print the generated commodity future
-print(json.dumps(commodity_future, indent=4))
+    # Print the generated commodity future
+    print(json.dumps(commodity_future, indent=4))

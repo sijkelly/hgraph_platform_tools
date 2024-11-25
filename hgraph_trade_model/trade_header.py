@@ -1,7 +1,6 @@
 import json
 from typing import Dict, Any
 
-
 # Define the mapping between hgraph tags and fpml tags
 HGRAPH_TO_FPML_MAPPING = {
     "trade_date": "tradeDate",
@@ -67,18 +66,23 @@ def create_trade_header(trade_data: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-# Example usage
-sample_trade_data = {
-    "trade_date": "2024-11-10",
-    "party_reference": "Party1",
-    "trade_id": "SWAP-003",
-    "internal_party": "Internal Counterparty",
-    "external_party": "External Counterparty",
-    "internal_portfolio": "Portfolio A",
-    "external_portfolio": "Portfolio B",
-    "internal_trader": "Trader X",
-    "external_trader": "Trader Y",
-}
+# Example usage for testing
+if __name__ == "__main__":
+    # Sample trade data for testing
+    sample_trade_data = {
+        "trade_date": "2024-11-10",
+        "party_reference": "Party1",
+        "trade_id": "SWAP-003",
+        "internal_party": "Internal Counterparty",
+        "external_party": "External Counterparty",
+        "internal_portfolio": "Portfolio A",
+        "external_portfolio": "Portfolio B",
+        "internal_trader": "Trader X",
+        "external_trader": "Trader Y",
+    }
 
-trade_header = create_trade_header(sample_trade_data)
-print(json.dumps(trade_header, indent=4))
+    # Generate the trade header
+    trade_header = create_trade_header(sample_trade_data)
+
+    # Print the generated trade header
+    print(json.dumps(trade_header, indent=4))

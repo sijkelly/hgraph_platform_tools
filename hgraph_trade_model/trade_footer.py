@@ -45,11 +45,16 @@ def create_trade_footer(trade_data: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-# Example usage
-sample_footer_data = {
-    # Add sample footer data here as needed
-    # Example: "placeholderField1": "Value1", "placeholderField2": "Value2"
-}
+# Example usage for testing
+if __name__ == "__main__":
+    # Sample footer data for testing
+    sample_footer_data = {
+        "placeholderField1": "Value1",
+        "placeholderField2": "Value2"
+    }
 
-trade_footer = create_trade_footer(sample_footer_data)
-print(json.dumps(trade_footer, indent=4))
+    # Generate the trade footer
+    trade_footer = create_trade_footer(sample_footer_data)
+
+    # Print the generated trade footer
+    print(json.dumps(trade_footer, indent=4))

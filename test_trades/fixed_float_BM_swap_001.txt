@@ -26,6 +26,6 @@
     "asset": "BaseMetals",
     "qty": 100,
     "unit": "tonne",
-    "price": 9500.00,
+    "price": 9000.00,
     "currency": "usd"
 }
