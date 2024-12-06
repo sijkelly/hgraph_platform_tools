@@ -1,58 +1,100 @@
+"""
+Command-line entry point for processing and booking trades.
+
+This script:
+- Parses command-line arguments.
+- Loads trade data from a specified file.
+- Validates the necessary fields.
+- Maps the data to a trade model.
+- Books the trade and writes the output to a specified directory.
+"""
+
+import sys
 import os
+import argparse
 import logging
-from typing import Dict
-from hgraph_trade_model.fpml_mappings import get_global_mapping, get_instrument_mapping
+from trade_loader import load_trade_from_file
+from trade_mapper import map_trade_to_model
+from trade_booker import book_trade
 
-# Configure logging for config-related issues
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+def main():
+    """
+    Main function to handle trade booking from the command line.
+    """
+    parser = argparse.ArgumentParser(
+        description="Process and book a trade using specified input and output paths."
+    )
 
-# Base directory for the project
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    # Command-line arguments
+    parser.add_argument(
+        "--input_file",
+        type=str,
+        required=True,
+        help="Path to the input trade file (e.g., JSON or TXT)."
+    )
+    parser.add_argument(
+        "--output_dir",
+        type=str,
+        required=True,
+        help="Directory where the output file will be saved."
+    )
+    parser.add_argument(
+        "--output_file",
+        type=str,
+        default="booked_trade.json",
+        help="Name of the output file (default: booked_trade.json)."
+    )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Enable verbose debugging output."
+    )
 
-# Directories for test trades and outputs
-TEST_TRADES_DIR = os.path.join(BASE_DIR, "test_trades")
-TEST_OUTPUTS_DIR = os.path.join(BASE_DIR, "test_trades_booking_outputs")
+    args = parser.parse_args()
 
-# Ensure directories exist
-if not os.path.exists(TEST_TRADES_DIR):
-    logging.warning(f"Test trades directory does not exist: {TEST_TRADES_DIR}")
-if not os.path.exists(TEST_OUTPUTS_DIR):
-    logging.warning(f"Test outputs directory does not exist: {TEST_OUTPUTS_DIR}")
+    # Set up logging
+    logging.basicConfig(
+        level=logging.DEBUG if args.verbose else logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(message)s"
+    )
 
-# File paths
-SAMPLE_TRADE_FILE = os.path.join(TEST_TRADES_DIR, "fixed_float_BM_swap_001.txt")
+    try:
+        logging.info("Loading trade data from file: %s", args.input_file)
+        trade_data = load_trade_from_file(args.input_file)
+        logging.debug("Loaded trade data: %s", trade_data)
 
-# Mappings
-GLOBAL_MAPPING: Dict[str, str] = get_global_mapping()
-INSTRUMENT_MAPPINGS: Dict[str, Dict[str, str]] = {
-    instrument: get_instrument_mapping(instrument)
-    for instrument in ["swap", "option", "forward", "future", "swaption", "fx", "physical"]
-}
+        # Validate presence of crucial fields
+        required_keys = {"instrument", "sub_instrument", "tradeType"}
+        missing_keys = required_keys - trade_data.keys()
+        if missing_keys:
+            raise ValueError(f"Missing required keys in trade data: {missing_keys}")
 
-# Environment settings
-ENVIRONMENT = os.getenv("APP_ENV", "development")  # Use "development" as default environment
+        logging.debug("Detected instrument: %s", trade_data.get("instrument", ""))
+        logging.debug("Detected sub-instrument: %s", trade_data.get("sub_instrument", ""))
 
-# Example of additional environment-based settings
-DEBUG_MODE = ENVIRONMENT == "development"
+        # Map trade data to model
+        logging.info("Mapping trade data to model.")
+        trade_model = map_trade_to_model(trade_data)
 
-# Logging environment settings
-logging.info(f"Running in {ENVIRONMENT} mode. Debug mode is {'on' if DEBUG_MODE else 'off'}.")
+        # Book the trade
+        logging.info("Booking trade and saving to file: %s", args.output_file)
+        book_trade(trade_model, args.output_file, output_dir=args.output_dir)
 
-# Configuration dictionary for external usage
-CONFIG = {
-    "BASE_DIR": BASE_DIR,
-    "TEST_TRADES_DIR": TEST_TRADES_DIR,
-    "TEST_OUTPUTS_DIR": TEST_OUTPUTS_DIR,
-    "SAMPLE_TRADE_FILE": SAMPLE_TRADE_FILE,
-    "GLOBAL_MAPPING": GLOBAL_MAPPING,
-    "INSTRUMENT_MAPPINGS": INSTRUMENT_MAPPINGS,
-    "ENVIRONMENT": ENVIRONMENT,
-    "DEBUG_MODE": DEBUG_MODE,
-}
+        logging.info("Trade processing and booking completed successfully.")
 
-# Example usage of config
+    except FileNotFoundError as e:
+        logging.error("File not found: %s", e)
+        sys.exit(1)
+    except ValueError as e:
+        if "Unsupported instrument type" in str(e) or "Unsupported sub-instrument type" in str(e):
+            logging.error("Instrument or sub-instrument type error: %s", e)
+        else:
+            logging.error("Invalid trade data: %s", e)
+        sys.exit(1)
+    except Exception as e:
+        logging.error("Unexpected error: %s", e)
+        sys.exit(1)
+
+
 if __name__ == "__main__":
-    print(f"Base Directory: {CONFIG['BASE_DIR']}")
-    print(f"Sample Trade File: {CONFIG['SAMPLE_TRADE_FILE']}")
-    print(f"Global Mappings: {CONFIG['GLOBAL_MAPPING']}")
-    print(f"Instrument Mappings: {CONFIG['INSTRUMENT_MAPPINGS']}")
+    main()

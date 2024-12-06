@@ -1,21 +1,32 @@
+"""
+fx.py
+
+This module creates the FX trade section of a trade message. It maps raw hgraph trade
+data to FpML-like fields and constructs a standardized fxTrade structure, including
+basic metadata.
+"""
+
 import json
 from typing import Dict, Any
 from hgraph_trade_model.fpml_mappings import get_global_mapping, get_instrument_mapping, map_hgraph_to_fpml
 
-
 def create_fx_trade(trade_data: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Create the FX trade section.
+    Create the FX trade section of the trade data.
+
+    This function applies global and FX-specific mappings to hgraph trade data,
+    translating keys to FpML-compatible fields. It then constructs the `fxTrade`
+    dictionary with essential fields like buySell, tradeDate, settlementDate,
+    currencyPair, notionalAmount, and rate.
 
     :param trade_data: Dictionary containing hgraph trade data.
-    :return: A dictionary representing the FX trade.
+    :return: A dictionary representing the fxTrade section and its metadata.
     """
-    # Retrieve the global and FX-specific mappings
     global_mapping = get_global_mapping()
     fx_mapping = get_instrument_mapping("fx")
     combined_mapping = {**global_mapping, **fx_mapping}
 
-    # Map hgraph keys to fpml keys
+    # Map hgraph keys to FpML keys
     fpml_data = map_hgraph_to_fpml(trade_data, combined_mapping)
 
     # Construct the FX trade section
@@ -39,22 +50,17 @@ def create_fx_trade(trade_data: Dict[str, Any]) -> Dict[str, Any]:
         }
     }
 
-
-# Example usage for testing
-if __name__ == "__main__":
-    # Sample FX trade data for testing
-    sample_trade_data = {
-        "buySell": "Buy",
-        "tradeDate": "2024-11-20",
-        "settlementDate": "2024-11-22",
-        "currencyPair": "EUR/USD",
-        "notionalAmount": 1000000,
-        "currency": "EUR",
-        "rate": 1.10
-    }
-
-    # Generate FX trade data structure
-    fx_trade = create_fx_trade(sample_trade_data)
-
-    # Print the generated FX trade
-    print(json.dumps(fx_trade, indent=4))
+# Example usage (commented out for production; can be tested separately)
+# if __name__ == "__main__":
+#     sample_trade_data = {
+#         "buySell": "Buy",
+#         "tradeDate": "2024-11-20",
+#         "settlementDate": "2024-11-22",
+#         "currencyPair": "EUR/USD",
+#         "notionalAmount": 1000000,
+#         "currency": "EUR",
+#         "rate": 1.10
+#     }
+#
+#     fx_trade = create_fx_trade(sample_trade_data)
+#     print(json.dumps(fx_trade, indent=4))

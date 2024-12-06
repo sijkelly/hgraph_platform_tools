@@ -1,32 +1,46 @@
+"""
+fpml_mappings.py
+
+This module defines mappings from hgraph-specific trade data fields to FpML-compliant keys
+and provides utility functions for converting raw trade data into an FpML-like structure.
+These mappings ensure consistency and facilitate easier integration with downstream systems
+expecting standardized FpML fields.
+
+Key functionalities:
+- map_hgraph_to_fpml: Recursively maps hgraph trade data keys to FpML keys.
+- get_global_mapping: Retrieves a global mapping for commonly used keys across multiple instruments.
+- get_instrument_mapping: Retrieves instrument-specific mappings.
+- map_instrument_type and map_sub_instrument_type: Convert hgraph instrument and sub-instrument
+  identifiers to the corresponding FpML types.
+"""
+
 import json
 from typing import Dict, Any
 
 def map_hgraph_to_fpml(trade_data: Dict[str, Any], mapping: Dict[str, str]) -> Dict[str, Any]:
     """
-    Map HGraph trade data keys to their corresponding FpML keys.
+    Recursively map HGraph trade data keys to their corresponding FpML keys using the provided mapping.
 
     :param trade_data: Dictionary containing HGraph trade data.
-    :param mapping: A mapping dictionary for HGraph to FpML keys.
-    :return: Dictionary with keys converted to FpML format.
+    :param mapping: A dictionary mapping hgraph keys to FpML keys.
+    :return: A dictionary with keys converted to FpML format.
     """
     mapped_data = {}
     for key, value in trade_data.items():
-        # Debugging key-value pairs being processed
-        print(f"DEBUG: Processing key={key}, value={value}")
-
-        # Check if the value itself is a nested dictionary
+        # If debugging is needed, consider using logging.debug() instead of print
+        # logging.debug(f"Processing key={key}, value={value}")
         if isinstance(value, dict):
             fpml_key = mapping.get(key, key)
             mapped_data[fpml_key] = map_hgraph_to_fpml(value, mapping)  # Recursive mapping for nested dicts
         else:
-            fpml_key = mapping.get(key, key)  # Default to the original key if no mapping exists
+            fpml_key = mapping.get(key, key)
             mapped_data[fpml_key] = value
 
-    # Debugging full mapped data
-    print(f"DEBUG: Mapped Data: {json.dumps(mapped_data, indent=4)}")
+    # If debugging is needed, consider using logging.debug()
+    # logging.debug("Mapped Data: %s", json.dumps(mapped_data, indent=4))
     return mapped_data
 
-# Global field mappings
+# Global field mappings: apply to all instruments
 HGRAPH_TO_FPML_GLOBAL_MAPPING = {
     "buy_sell": "buySell",
     "currency": "priceUnit",
@@ -47,7 +61,7 @@ HGRAPH_TO_FPML_GLOBAL_MAPPING = {
     "external_trader": "externalTrader"
 }
 
-# Instrument-specific mappings
+# Instrument-specific mappings: apply only to particular instruments
 HGRAPH_TO_FPML_INSTRUMENT_MAPPING = {
     "swap": {
         "fixed_leg_price": "fixedPrice",
@@ -94,7 +108,7 @@ HGRAPH_TO_FPML_INSTRUMENT_MAPPING = {
     }
 }
 
-# Instrument type mapping
+# Instrument type mapping: maps hgraph instrument strings to known instrument categories
 INSTRUMENT_TYPE_MAPPING = {
     "swap": "swap",
     "option": "option",
@@ -105,7 +119,7 @@ INSTRUMENT_TYPE_MAPPING = {
     "fx": "fx",
 }
 
-# Sub-instrument type mapping
+# Sub-instrument type mapping: maps hgraph sub-instrument strings to known sub-instrument categories
 SUB_INSTRUMENT_TYPE_MAPPING = {
     "fixed_float": "fixedFloat",
     "float_float": "floatFloat",
@@ -113,32 +127,34 @@ SUB_INSTRUMENT_TYPE_MAPPING = {
 
 def get_global_mapping() -> Dict[str, str]:
     """
-    Retrieve the global field mapping.
+    Retrieve the global field mapping that applies to all instruments.
     """
     return HGRAPH_TO_FPML_GLOBAL_MAPPING
 
 def get_instrument_mapping(instrument: str) -> Dict[str, str]:
     """
     Retrieve the mapping specific to an instrument.
-    :param instrument: The name of the instrument (e.g., "comm_swap").
-    :return: The instrument-specific mapping.
+
+    :param instrument: The name of the instrument (e.g., "swap", "option").
+    :return: The instrument-specific mapping dictionary.
     """
     return HGRAPH_TO_FPML_INSTRUMENT_MAPPING.get(instrument, {})
 
 def map_instrument_type(hgraph_type: str) -> str:
     """
-    Map instrument types from hgraph to FpML.
+    Map hgraph instrument types to FpML instrument types.
+
     :param hgraph_type: The hgraph instrument type.
-    :return: The FpML instrument type.
+    :return: The corresponding FpML instrument type or the original if unmapped.
     """
     return INSTRUMENT_TYPE_MAPPING.get(hgraph_type, hgraph_type)
 
 def map_sub_instrument_type(hgraph_sub_type: str) -> str:
     """
-    Map sub-instrument types from hgraph to FpML.
+    Map hgraph sub-instrument types to FpML sub-instrument types.
+
     :param hgraph_sub_type: The hgraph sub-instrument type.
-    :return: The FpML sub-instrument type.
+    :return: The corresponding FpML sub-instrument type or the original if unmapped.
     """
-    # Normalize the sub-instrument key to lowercase for mapping consistency
     normalized_key = hgraph_sub_type.strip().lower()
     return SUB_INSTRUMENT_TYPE_MAPPING.get(normalized_key, normalized_key)

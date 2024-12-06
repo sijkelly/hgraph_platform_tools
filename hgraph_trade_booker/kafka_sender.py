@@ -1,73 +1,76 @@
+"""
+kafka_sender.py
+
+This module provides a KafkaSender class intended for sending trades or other
+messages to a Kafka topic. It encapsulates the logic for connecting to a Kafka
+cluster, optionally serializing messages to JSON, and safely closing the
+producer when done.
+
+Typical usage:
+    sender = KafkaSender(bootstrap_servers="localhost:9092")
+    sender.send_to_kafka("my_topic", {"key": "value"}, serialize_as_json=True)
+    sender.close()
+"""
+
 import json
-import logging
-from kafka import KafkaProducer, KafkaError
 from typing import Any
-
-# Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
-
+from kafka import KafkaProducer, KafkaError
 
 class KafkaSender:
     """
-    A Kafka sender class for sending messages to a Kafka topic.
+    Provides functionality to send messages to a Kafka topic.
+
+    This class uses the KafkaProducer from `kafka-python` to publish messages.
+    It supports optional JSON serialization for dictionary messages.
     """
 
     def __init__(self, bootstrap_servers: str = "localhost:9092"):
         """
-        Initialize the Kafka producer with the given bootstrap servers.
+        Initialize the Kafka producer.
 
-        :param bootstrap_servers: Kafka broker addresses (comma-separated if multiple).
+        :param bootstrap_servers: A string specifying the Kafka bootstrap servers.
+                                 Use a comma-separated list if multiple servers.
         """
         self.producer = KafkaProducer(bootstrap_servers=bootstrap_servers)
 
-    def send_to_kafka(self, topic: str, message: Any, serialize_as_json: bool = True):
+    def send_to_kafka(self, topic: str, message: Any, serialize_as_json: bool = True) -> None:
         """
-        Send a message to a Kafka topic.
+        Send a message to the specified Kafka topic.
 
-        :param topic: The Kafka topic to send the message to.
-        :param message: The message to send. Can be a string or a dictionary.
-        :param serialize_as_json: Whether to serialize the message as JSON.
+        If `serialize_as_json` is True and `message` is a dictionary, it will be
+        serialized to a JSON string before sending. Otherwise, `message` is assumed
+        to be a string and will be encoded as UTF-8.
+
+        :param topic: The name of the Kafka topic to which the message will be sent.
+        :param message: The message to send. Can be either a string or a dictionary.
+        :param serialize_as_json: If True and `message` is a dict, serialize it as JSON.
+        :raises KafkaError: If there is a problem sending the message.
         """
         try:
-            # Serialize the message if needed
             if serialize_as_json and isinstance(message, dict):
                 message = json.dumps(message)
-
-            # Send the message
             self.producer.send(topic, message.encode("utf-8"))
             self.producer.flush()
-            logging.info(f"Message sent to Kafka topic: {topic}")
         except KafkaError as e:
-            logging.error(f"Failed to send message to Kafka topic {topic}: {e}")
-            raise
+            # In a production environment, consider implementing retries or custom error handling.
+            raise KafkaError(f"Failed to send message to topic '{topic}': {e}") from e
 
-    def close(self):
+    def close(self) -> None:
         """
-        Close the Kafka producer.
+        Close the Kafka producer connection.
+
+        After calling this method, the producer can no longer be used to send messages.
         """
         try:
             self.producer.close()
-            logging.info("Kafka producer closed successfully.")
         except Exception as e:
-            logging.error(f"Error while closing Kafka producer: {e}")
+            # In production, you might handle exceptions more gracefully.
+            raise RuntimeError(f"Error closing Kafka producer: {e}") from e
 
 
-# Example usage
-if __name__ == "__main__":
-    # Kafka configuration
-    kafka_topic = "test_topic"
-    bootstrap_servers = "localhost:9092"
-
-    # Sample message
-    sample_message = {
-        "tradeId": "SWAP-003",
-        "tradeDate": "2024-11-25",
-        "instrument": "CommoditySwap"
-    }
-
-    # Initialize KafkaSender and send a message
-    sender = KafkaSender(bootstrap_servers=bootstrap_servers)
-    try:
-        sender.send_to_kafka(kafka_topic, sample_message)
-    finally:
-        sender.close()
+# Example usage (for testing or demonstration purposes):
+# if __name__ == "__main__":
+#     sender = KafkaSender(bootstrap_servers="localhost:9092")
+#     sample_message = {"tradeId": "SWAP-003", "instrument": "CommoditySwap"}
+#     sender.send_to_kafka("test_topic", sample_message, serialize_as_json=True)
+#     sender.close()

@@ -1,18 +1,26 @@
+"""
+option.py
+
+This module provides functionality to create the commodity option section of a trade message.
+It maps raw hgraph trade data to FpML-compatible keys and constructs a standardized
+commodityOption dictionary. The code also handles exercise styles (European, American,
+Bermudan) and calculates premiums if they are not explicitly provided.
+"""
+
 import json
 from typing import Dict, Any
-from hgraph_trade_model.fpml_mappings import get_global_mapping, get_instrument_mapping, map_instrument_type
+from hgraph_trade_model.fpml_mappings import get_global_mapping, get_instrument_mapping
 
 # Placeholder for exercise styles until the FPML ENUM file is ready
 exercise_styles = ["European", "American", "Bermudan"]
 
-
 def map_hgraph_to_fpml(trade_data: Dict[str, Any], mapping: Dict[str, str]) -> Dict[str, Any]:
     """
-    Map hgraph trade data keys to their corresponding fpml keys.
+    Map hgraph trade data keys to their corresponding FpML keys.
 
     :param trade_data: Dictionary containing hgraph trade data.
-    :param mapping: Mapping dictionary for hgraph to fpml keys.
-    :return: Dictionary with keys converted to fpml format.
+    :param mapping: A mapping dictionary for hgraph to FpML keys.
+    :return: Dictionary with keys converted to FpML format.
     """
     mapped_data = {}
     for key, value in trade_data.items():
@@ -20,20 +28,23 @@ def map_hgraph_to_fpml(trade_data: Dict[str, Any], mapping: Dict[str, str]) -> D
         mapped_data[fpml_key] = value
     return mapped_data
 
-
 def create_commodity_option(trade_data: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Create the commodity option section based on the option type.
+    Create the commodity option section of the trade data.
+
+    This function applies global and option-specific mappings to the input data,
+    validates the exercise style, calculates premiums if necessary, and constructs
+    a commodityOption dictionary compatible with downstream systems.
 
     :param trade_data: Dictionary containing hgraph trade data.
     :return: A dictionary representing the commodity option.
+    :raises ValueError: If an invalid exercise style is specified.
     """
-    # Retrieve the global and option-specific mappings
     global_mapping = get_global_mapping()
     option_mapping = get_instrument_mapping("comm_option")
     combined_mapping = {**global_mapping, **option_mapping}
 
-    # Map hgraph keys to fpml keys
+    # Map hgraph keys to FpML keys
     fpml_data = map_hgraph_to_fpml(trade_data, combined_mapping)
 
     # Calculate total premium if not explicitly provided
@@ -75,31 +86,26 @@ def create_commodity_option(trade_data: Dict[str, Any]) -> Dict[str, Any]:
 
     return {"commodityOption": option}
 
-
-# Example usage (isolated to prevent execution during import)
-if __name__ == "__main__":
-    # Sample trade data for testing
-    sample_trade_data = {
-        "tradeId": "OPT-002",
-        "tradeDate": "2024-11-15",
-        "partyReference": "Party1",
-        "buySell": "Buy",
-        "optionType": "Bermudan",
-        "effectiveDate": "2024-12-01",
-        "expirationDate": "2025-12-01",
-        "underlyer": "Gold",
-        "notionalQuantity": 5000,
-        "notionalUnit": "ounces",
-        "currency": "USD",
-        "priceUnit": "USD per ounce",
-        "strikePrice": 1900.00,
-        "premiumPaymentDate": "2024-12-05",
-        "premiumPerUnit": 25.50,
-        "exerciseDates": ["2025-06-01", "2025-09-01", "2025-12-01"]
-    }
-
-    # Generate the commodity option
-    commodity_option = create_commodity_option(sample_trade_data)
-
-    # Print the generated commodity option
-    print(json.dumps(commodity_option, indent=4))
+# Example usage (commented out for production; move to tests or examples)
+# if __name__ == "__main__":
+#     sample_trade_data = {
+#         "tradeId": "OPT-002",
+#         "tradeDate": "2024-11-15",
+#         "partyReference": "Party1",
+#         "buySell": "Buy",
+#         "optionType": "Bermudan",
+#         "effectiveDate": "2024-12-01",
+#         "expirationDate": "2025-12-01",
+#         "underlyer": "Gold",
+#         "notionalQuantity": 5000,
+#         "notionalUnit": "ounces",
+#         "currency": "USD",
+#         "priceUnit": "USD per ounce",
+#         "strikePrice": 1900.00,
+#         "premiumPaymentDate": "2024-12-05",
+#         "premiumPerUnit": 25.50,
+#         "exerciseDates": ["2025-06-01", "2025-09-01", "2025-12-01"]
+#     }
+#
+#     commodity_option = create_commodity_option(sample_trade_data)
+#     print(json.dumps(commodity_option, indent=4))

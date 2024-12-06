@@ -1,15 +1,24 @@
+"""
+forward.py
+
+This module provides functionality to create a commodity forward trade section
+of a message. It maps raw hgraph trade data to FpML-like fields using global and
+instrument-specific mappings, and then constructs a standardized commodityForward
+structure.
+"""
+
 import json
 from typing import Dict, Any
-from hgraph_trade_model.fpml_mappings import get_global_mapping, get_instrument_mapping, map_instrument_type
+from hgraph_trade_model.fpml_mappings import get_global_mapping, get_instrument_mapping
 
 
 def map_hgraph_to_fpml(trade_data: Dict[str, Any], mapping: Dict[str, str]) -> Dict[str, Any]:
     """
-    Map hgraph trade data keys to their corresponding fpml keys.
+    Map hgraph trade data keys to corresponding FpML keys based on the provided mapping.
 
     :param trade_data: Dictionary containing hgraph trade data.
-    :param mapping: Mapping dictionary for hgraph to fpml keys.
-    :return: Dictionary with keys converted to fpml format.
+    :param mapping: A dictionary mapping hgraph keys to FpML keys.
+    :return: A dictionary with hgraph keys replaced by their FpML equivalents.
     """
     mapped_data = {}
     for key, value in trade_data.items():
@@ -20,17 +29,20 @@ def map_hgraph_to_fpml(trade_data: Dict[str, Any], mapping: Dict[str, str]) -> D
 
 def create_commodity_forward(trade_data: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Create the commodity forward section.
+    Create the commodity forward section of the trade data.
+
+    This function retrieves global and forward-specific mappings to translate hgraph
+    fields to FpML keys, then constructs a commodityForward dictionary with the
+    standardized fields.
 
     :param trade_data: Dictionary containing hgraph trade data.
-    :return: A dictionary representing the commodity forward.
+    :return: A dictionary representing the commodity forward section.
     """
-    # Retrieve the global and forward-specific mappings
     global_mapping = get_global_mapping()
     forward_mapping = get_instrument_mapping("comm_forward")
     combined_mapping = {**global_mapping, **forward_mapping}
 
-    # Map hgraph keys to fpml keys
+    # Map hgraph keys to FpML keys
     fpml_data = map_hgraph_to_fpml(trade_data, combined_mapping)
 
     # Build the forward data structure
@@ -53,26 +65,21 @@ def create_commodity_forward(trade_data: Dict[str, Any]) -> Dict[str, Any]:
     return {"commodityForward": forward}
 
 
-# Example usage (isolated)
-if __name__ == "__main__":
-    # Sample trade data for testing
-    sample_trade_data = {
-        "tradeId": "FORWARD-001",
-        "tradeDate": "2024-11-20",
-        "buySell": "Buy",
-        "effectiveDate": "2024-12-01",
-        "terminationDate": "2025-12-01",
-        "underlyer": "Crude Oil",
-        "notionalQuantity": 500,
-        "notionalUnit": "barrels",
-        "currency": "USD",
-        "priceUnit": "USD per barrel",
-        "fixedPrice": 75.00,
-        "deliveryLocation": "Cushing, OK"
-    }
-
-    # Generate the commodity forward
-    commodity_forward = create_commodity_forward(sample_trade_data)
-
-    # Print the generated commodity forward
-    print(json.dumps(commodity_forward, indent=4))
+# Example usage (commented out for production; move to separate tests or examples if needed)
+# if __name__ == "__main__":
+#     sample_trade_data = {
+#         "tradeId": "FORWARD-001",
+#         "tradeDate": "2024-11-20",
+#         "buySell": "Buy",
+#         "effectiveDate": "2024-12-01",
+#         "terminationDate": "2025-12-01",
+#         "underlyer": "Crude Oil",
+#         "notionalQuantity": 500,
+#         "notionalUnit": "barrels",
+#         "currency": "USD",
+#         "priceUnit": "USD per barrel",
+#         "fixedPrice": 75.00,
+#         "deliveryLocation": "Cushing, OK"
+#     }
+#     commodity_forward = create_commodity_forward(sample_trade_data)
+#     print(json.dumps(commodity_forward, indent=4))

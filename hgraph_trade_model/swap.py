@@ -1,3 +1,12 @@
+"""
+swap.py
+
+This module provides functionality to create the commodity swap section of a trade message.
+It uses global and instrument-specific mappings to translate hgraph trade data into
+FpML-like keys. Depending on the sub-instrument type (e.g., fixedFloat, floatFloat),
+it constructs a standardized commoditySwap dictionary suitable for downstream processing.
+"""
+
 import json
 from typing import Dict, Any
 from hgraph_trade_model.fpml_mappings import (
@@ -7,28 +16,26 @@ from hgraph_trade_model.fpml_mappings import (
     map_sub_instrument_type
 )
 
-
 def create_commodity_swap(trade_data: Dict[str, Any], sub_instrument_type: str) -> Dict[str, Any]:
     """
-    Create the commodity swap section based on the sub-instrument type.
+    Create the commodity swap section based on the given sub-instrument type.
+
+    This function applies global and swap-specific mappings to translate hgraph
+    keys into FpML-compatible keys, and then constructs a commoditySwap dictionary
+    appropriate for the specified sub-instrument type.
 
     :param trade_data: Dictionary containing hgraph trade data.
-    :param sub_instrument_type: Mapped sub-instrument type for the trade (e.g., "fixedFloat").
-    :return: A dictionary representing the commodity swap.
+    :param sub_instrument_type: The mapped sub-instrument type (e.g., "fixedFloat", "floatFloat").
+    :return: A dictionary representing the commoditySwap section.
+    :raises ValueError: If the sub-instrument type is not supported.
     """
-    # Retrieve mappings
     global_mapping = get_global_mapping()
     swap_mapping = get_instrument_mapping("swap")
     combined_mapping = {**global_mapping, **swap_mapping}
 
-    # Map hgraph keys to fpml keys
     fpml_data = map_hgraph_to_fpml(trade_data, combined_mapping)
 
-    # Debugging
-    print(f"DEBUG: sub_instrument_type passed to create_commodity_swap: {sub_instrument_type}")
-    print(f"DEBUG: fpml_data after mapping: {json.dumps(fpml_data, indent=4)}")
-
-    # Initialize the swap structure
+    # Initialize the swap structure with a buySell field
     swap = {"buySell": fpml_data.get("buySell", "")}
 
     if sub_instrument_type == "fixedFloat":
@@ -83,29 +90,25 @@ def create_commodity_swap(trade_data: Dict[str, Any], sub_instrument_type: str) 
 
     return {"commoditySwap": swap}
 
-
-# Example usage for testing
-if __name__ == "__main__":
-    sample_trade_data = {
-        "tradeType": "newTrade",
-        "instrument": "CommoditySwap",
-        "sub_instrument": "fixed_float",
-        "buy_sell": "Buy",
-        "effective_date": "2024-12-01",
-        "termination_date": "2025-12-01",
-        "underlyer": "WTI",
-        "notional_quantity": 10000,
-        "notional_unit": "barrels",
-        "currency": "USD",
-        "price_unit": "USD per barrel",
-        "fixed_leg_price": 85.50,
-        "float_leg_reference": "Brent",
-        "reset_dates": ["2024-12-15", "2025-01-15"]
-    }
-
-    # Map sub-instrument type
-    mapped_sub_instrument = map_sub_instrument_type(sample_trade_data["sub_instrument"])
-
-    # Generate the commodity swap
-    commodity_swap = create_commodity_swap(sample_trade_data, mapped_sub_instrument)
-    print(json.dumps(commodity_swap, indent=4))
+# Example usage (commented out for production; move to tests or separate examples file if desired)
+# if __name__ == "__main__":
+#     sample_trade_data = {
+#         "tradeType": "newTrade",
+#         "instrument": "CommoditySwap",
+#         "sub_instrument": "fixed_float",
+#         "buy_sell": "Buy",
+#         "effective_date": "2024-12-01",
+#         "termination_date": "2025-12-01",
+#         "underlyer": "WTI",
+#         "notional_quantity": 10000,
+#         "notional_unit": "barrels",
+#         "currency": "USD",
+#         "price_unit": "USD per barrel",
+#         "fixed_leg_price": 85.50,
+#         "float_leg_reference": "Brent",
+#         "reset_dates": ["2024-12-15", "2025-01-15"]
+#     }
+#
+#     mapped_sub_instrument = map_sub_instrument_type(sample_trade_data["sub_instrument"])
+#     commodity_swap = create_commodity_swap(sample_trade_data, mapped_sub_instrument)
+#     print(json.dumps(commodity_swap, indent=4))
