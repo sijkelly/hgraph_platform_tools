@@ -1,6 +1,7 @@
 import json
 from typing import Dict, Any
 import datetime
+import hashlib
 
 
 def create_message_header(msg_type: str, sender: str, target: str) -> Dict[str, Any]:
@@ -13,13 +14,11 @@ def create_message_header(msg_type: str, sender: str, target: str) -> Dict[str, 
     :return: A dictionary representing the message header.
     """
     return {
-        "messageHeader": {
-            "messageType": msg_type,
-            "senderCompID": sender,
-            "targetCompID": target,
-            "sendingTime": datetime.datetime.utcnow().isoformat() + "Z",
-            "messageVersion": "1.0"
-        }
+        "messageType": msg_type,
+        "senderCompID": sender,
+        "targetCompID": target,
+        "sendingTime": datetime.datetime.utcnow().isoformat() + "Z",
+        "messageVersion": "1.0"
     }
 
 
@@ -30,9 +29,7 @@ def create_message_footer() -> Dict[str, Any]:
     :return: A dictionary representing the message footer.
     """
     return {
-        "messageFooter": {
-            "checksum": None  # Placeholder for checksum calculation.
-        }
+        "checksum": None  # Placeholder for checksum calculation.
     }
 
 
@@ -43,7 +40,18 @@ def calculate_checksum(message: str) -> str:
     :param message: The serialized message string (e.g., JSON).
     :return: The calculated checksum.
     """
-    return str(sum(bytearray(message, "utf-8")) % 256)
+    return hashlib.sha256(message.encode("utf-8")).hexdigest()
+
+
+def filter_trade_data(trade_data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Filter the trade data to ensure only top-level allowed keys are included.
+
+    :param trade_data: The original trade data.
+    :return: Filtered trade data.
+    """
+    allowed_keys = {"tradeHeader", "tradeEconomics", "tradeFooter"}
+    return {key: value for key, value in trade_data.items() if key in allowed_keys}
 
 
 def wrap_message_with_headers_and_footers(
@@ -61,16 +69,29 @@ def wrap_message_with_headers_and_footers(
     :param target: Target system identifier.
     :return: A complete message with header and footer.
     """
+    # Filter the trade data to remove unwanted keys
+    filtered_trade_data = filter_trade_data(trade_data)
+
     # Generate header and footer
     header = create_message_header(msg_type, sender, target)
     footer = create_message_footer()
 
-    # Combine header, trade data, and footer
-    message = {**header, **trade_data, **footer}
+    # Construct the message structure
+    message = {
+        "messageHeader": header,
+        **filtered_trade_data,
+        "messageFooter": footer,
+    }
 
     # Calculate and set the checksum
-    serialized_message = json.dumps(message, separators=(",", ":"))
+    serialized_message = json.dumps(
+        {"messageHeader": header, **filtered_trade_data}, separators=(",", ":")
+    )  # Exclude the footer itself from checksum calculation
     message["messageFooter"]["checksum"] = calculate_checksum(serialized_message)
+
+    # Debugging outputs
+    print(f"DEBUG: Serialized message before checksum: {serialized_message}")
+    print(f"DEBUG: Checksum: {message['messageFooter']['checksum']}")
 
     return message
 
@@ -80,19 +101,48 @@ if __name__ == "__main__":
     # Sample trade data
     sample_trade_data = {
         "tradeHeader": {
-            "tradeId": "SWAP-003",
-            "tradeDate": "2024-11-10"
-        },
-        "commoditySwap": {
-            "buySell": "Buy",
-            "effectiveDate": "2024-12-01",
-            "terminationDate": "2025-12-01",
-            "notionalQuantity": {
-                "quantity": 10000,
-                "unit": "barrels"
+            "partyTradeIdentifier": {
+                "partyReference": "",
+                "tradeId": "hgraph-SWAP-002"
             },
-            "paymentCurrency": "USD"
-        }
+            "tradeDate": "2024-11-20",
+            "parties": [
+                {
+                    "internalParty": ""
+                },
+                {
+                    "externalParty": ""
+                }
+            ],
+            "portfolio": {
+                "internalPortfolio": "",
+                "externalPortfolio": ""
+            },
+            "trader": {
+                "internalTrader": "",
+                "externalTrader": ""
+            }
+        },
+        "tradeEconomics": {
+            "commoditySwap": {
+                "buySell": "Buy",
+                "effectiveDate": "2024-12-01",
+                "terminationDate": "2025-12-01",
+                "notionalQuantity": {
+                    "quantity": 100,
+                    "unit": "tonne"
+                },
+                "paymentCurrency": "USD"
+            }
+        },
+        "tradeFooter": {
+            "placeholderField1": "",
+            "placeholderField2": ""
+        },
+        # Unwanted fields that should not appear in the output
+        "buy_sell": "buySell",
+        "currency": "paymentCurrency",
+        "price_unit": "priceUnit"
     }
 
     # Wrap trade data with headers and footers

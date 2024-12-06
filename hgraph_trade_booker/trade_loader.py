@@ -2,7 +2,15 @@ import os
 import json
 import re
 from typing import Dict, Any
+from hgraph_trade_model.fpml_mappings import (
+    get_global_mapping,
+    get_instrument_mapping,
+    map_instrument_type,
+    map_sub_instrument_type
+)
 
+# Debugging print statement after imports
+print(f"DEBUG: map_sub_instrument_type in trade_loader: {map_sub_instrument_type}")
 
 def validate_trade_file_with_regex(file_content: str) -> None:
     """
@@ -11,11 +19,41 @@ def validate_trade_file_with_regex(file_content: str) -> None:
     :param file_content: Content of the trade file as a string.
     :raises ValueError: If the validation fails.
     """
-    # Example: Ensure the file contains essential keys like "tradeType" and "instrument"
-    required_keys = ["tradeType", "instrument", "trade_id"]
+    # Example: Ensure the file contains essential keys like "tradeType", "instrument", and "sub_instrument"
+    required_keys = ["tradeType", "instrument", "sub_instrument", "trade_id", "counterparty", "portfolio", "traders"]
+
     for key in required_keys:
         if not re.search(rf'\"{key}\"[ ]*:', file_content):
             raise ValueError(f"Missing required key: {key}")
+
+    # Check for nested fields like `internal` and `external` in `traders`, `counterparty`, and `portfolio`
+    nested_keys = {
+        "traders": ["internal", "external"],
+        "counterparty": ["internal", "external"],
+        "portfolio": ["internal", "external"]
+    }
+
+    for parent, children in nested_keys.items():
+        for child in children:
+            if not re.search(rf'\"{parent}\"[ ]*:[^{{]*{{[^}}]*\"{child}\"[ ]*:', file_content):
+                raise ValueError(f"Missing nested key: {parent}.{child}")
+
+
+def validate_instrument_types(trade_data: Dict[str, Any]) -> None:
+    raw_instrument = trade_data.get("instrument", "UnknownInstrument")
+    raw_sub_instrument = trade_data.get("sub_instrument", "UnknownSubInstrument")
+
+    print(f"DEBUG: raw_instrument={raw_instrument}, raw_sub_instrument={raw_sub_instrument}")
+
+    instrument_type = map_instrument_type(raw_instrument)
+    sub_instrument_type = map_sub_instrument_type(raw_sub_instrument)
+
+    print(f"DEBUG: instrument_type={instrument_type}, sub_instrument_type={sub_instrument_type}")
+
+    if instrument_type == "UnknownInstrument":
+        raise ValueError(f"Unsupported instrument type: {raw_instrument}")
+    if sub_instrument_type == "UnknownSubInstrument":
+        raise ValueError(f"Unsupported sub-instrument type: {raw_sub_instrument}")
 
 
 def load_trade_from_file(file_path: str) -> Dict[str, Any]:
@@ -39,6 +77,9 @@ def load_trade_from_file(file_path: str) -> Dict[str, Any]:
         trade_data = json.loads(file_content)
     except json.JSONDecodeError as e:
         raise ValueError(f"Invalid JSON format in file: {file_path}") from e
+
+    # Validate instrument and sub-instrument types
+    validate_instrument_types(trade_data)
 
     return trade_data
 

@@ -1,6 +1,7 @@
 import os
 import json
 from typing import Dict, Any
+from hgraph_trade_model.fpml_mappings import get_global_mapping, get_instrument_mapping, map_instrument_type
 
 
 def book_trade(trade_data: Dict[str, Any], output_file: str, output_dir: str):
@@ -16,7 +17,10 @@ def book_trade(trade_data: Dict[str, Any], output_file: str, output_dir: str):
 
     # Save the trade data to the specified file
     output_path = os.path.join(output_dir, output_file)
-    with open(output_path, "w") as file:
-        json.dump(trade_data, file, indent=4)
-
-    print(f"Booking message saved to {output_path}")
+    try:
+        with open(output_path, "w") as file:
+            json.dump(trade_data, file, indent=4)
+        print(f"Booking message saved to {output_path}")
+    except IOError as e:
+        print(f"Error writing to {output_path}: {e}")
+        raise

@@ -1,30 +1,20 @@
 import json
 from typing import Dict, Any
-
-# Define the mapping between hgraph tags and fpml tags
-HGRAPH_TO_FPML_MAPPING = {
-    "trade_date": "tradeDate",
-    "party_reference": "partyReference",
-    "trade_id": "tradeId",
-    "internal_party": "internalParty",
-    "external_party": "externalParty",
-    "internal_portfolio": "internalPortfolio",
-    "external_portfolio": "externalPortfolio",
-    "internal_trader": "internalTrader",
-    "external_trader": "externalTrader",
-}
+from hgraph_trade_model.fpml_mappings import get_global_mapping, get_instrument_mapping
 
 
-def map_hgraph_to_fpml(trade_data: Dict[str, Any]) -> Dict[str, Any]:
+def map_hgraph_to_fpml(trade_data: Dict[str, Any], mapping: Dict[str, str]) -> Dict[str, Any]:
     """
     Map hgraph trade data keys to their corresponding fpml keys.
 
     :param trade_data: Dictionary containing hgraph trade data.
+    :param mapping: Mapping dictionary for hgraph to fpml keys.
     :return: Dictionary with keys converted to fpml format.
     """
     mapped_data = {}
     for key, value in trade_data.items():
-        fpml_key = HGRAPH_TO_FPML_MAPPING.get(key, key)  # Default to the original key if no mapping exists
+        # Translate keys using the mapping
+        fpml_key = mapping.get(key, key)
         mapped_data[fpml_key] = value
     return mapped_data
 
@@ -36,27 +26,44 @@ def create_trade_header(trade_data: Dict[str, Any]) -> Dict[str, Any]:
     :param trade_data: Dictionary containing hgraph trade data.
     :return: A dictionary representing the trade header.
     """
+    # Retrieve global and header-specific mappings
+    global_mapping = get_global_mapping()
+    header_mapping = get_instrument_mapping("trade_header")
+    combined_mapping = {**global_mapping, **header_mapping}
+
     # Map hgraph keys to fpml keys
-    fpml_data = map_hgraph_to_fpml(trade_data)
+    fpml_data = map_hgraph_to_fpml(trade_data, combined_mapping)
+
+    # Extract nested fields for counterparty, portfolio, and traders
+    counterparty = trade_data.get("counterparty", {})
+    internal_party = counterparty.get("internal", "")
+    external_party = counterparty.get("external", "")
+
+    portfolio = trade_data.get("portfolio", {})
+    internal_portfolio = portfolio.get("internal", "")
+    external_portfolio = portfolio.get("external", "")
+
+    traders = trade_data.get("traders", {})
+    internal_trader = traders.get("internal", "")
+    external_trader = traders.get("external", "")
 
     return {
         "tradeHeader": {
             "partyTradeIdentifier": {
-                "partyReference": fpml_data.get("partyReference", ""),
                 "tradeId": fpml_data.get("tradeId", "")
             },
             "tradeDate": fpml_data.get("tradeDate", ""),
             "parties": [
-                {"internalParty": fpml_data.get("internalParty", "")},
-                {"externalParty": fpml_data.get("externalParty", "")}
+                {"internalParty": internal_party},  # Use parsed data
+                {"externalParty": external_party}   # Use parsed data
             ],
             "portfolio": {
-                "internalPortfolio": fpml_data.get("internalPortfolio", ""),
-                "externalPortfolio": fpml_data.get("externalPortfolio", "")
+                "internalPortfolio": internal_portfolio,  # Use parsed data
+                "externalPortfolio": external_portfolio   # Use parsed data
             },
             "trader": {
-                "internalTrader": fpml_data.get("internalTrader", ""),
-                "externalTrader": fpml_data.get("externalTrader", "")
+                "internalTrader": internal_trader,  # Use parsed data
+                "externalTrader": external_trader   # Use parsed data
             },
         },
         "metadata": {
@@ -73,12 +80,18 @@ if __name__ == "__main__":
         "trade_date": "2024-11-10",
         "party_reference": "Party1",
         "trade_id": "SWAP-003",
-        "internal_party": "Internal Counterparty",
-        "external_party": "External Counterparty",
-        "internal_portfolio": "Portfolio A",
-        "external_portfolio": "Portfolio B",
-        "internal_trader": "Trader X",
-        "external_trader": "Trader Y",
+        "counterparty": {
+            "internal": "Internal Counterparty",
+            "external": "External Counterparty"
+        },
+        "portfolio": {
+            "internal": "Portfolio A",
+            "external": "Portfolio B"
+        },
+        "traders": {
+            "internal": "Trader X",
+            "external": "Trader Y"
+        },
     }
 
     # Generate the trade header
