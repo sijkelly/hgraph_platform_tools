@@ -17,6 +17,8 @@ import sys
 import os
 import argparse
 import logging
+
+from logging_config import setup_logging  # Import the centralized logging setup function
 from trade_loader import load_trade_from_file
 from trade_mapper import map_trade_to_model
 from trade_booker import book_trade
@@ -59,11 +61,12 @@ def main():
 
     args = parser.parse_args()
 
-    # Configure logging level based on verbosity
-    logging.basicConfig(
-        level=logging.DEBUG if args.verbose else logging.INFO,
-        format="%(asctime)s - %(levelname)s - %(message)s"
-    )
+    # Initialize logging using the centralized setup
+    setup_logging()
+
+    # Adjust the logging level if verbose mode is enabled
+    if args.verbose:
+        logging.getLogger().setLevel(logging.DEBUG)
 
     try:
         logging.info("Loading trade data from file: %s", args.input_file)
@@ -98,7 +101,7 @@ def main():
             logging.error("Invalid trade data: %s", e)
         sys.exit(1)
     except Exception as e:
-        logging.error("Unexpected error: %s", e)
+        logging.exception("Unexpected error encountered.")
         sys.exit(1)
 
 
