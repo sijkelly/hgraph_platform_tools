@@ -1,71 +1,106 @@
-{
-    "messageHeader": {
-        "messageType": "newTrade",
-        "senderCompID": "DefaultSender",
-        "targetCompID": "DefaultTarget",
-        "sendingTime": "2024-12-16T11:57:16.317748Z",
-        "messageVersion": "1.0"
-    },
-    "tradeHeader": {
+[
+    {
+        "messageHeader": {
+            "messageType": "newTrade",
+            "senderCompID": "DefaultSender",
+            "targetCompID": "DefaultTarget",
+            "sendingTime": "2025-01-10T13:36:23.751057Z",
+            "messageVersion": "1.0"
+        },
         "tradeHeader": {
-            "partyTradeIdentifier": {
-                "tradeId": "hgraph-SWAP-001"
-            },
-            "tradeDate": "2024-11-20",
-            "parties": [
-                {
-                    "internalParty": "internal_party_test"
+            "tradeHeader": {
+                "partyTradeIdentifier": {
+                    "tradeId": "hgraph-SWAP-011"
                 },
-                {
-                    "externalParty": "external_party_test"
+                "tradeDate": "2024-11-20",
+                "parties": [
+                    {
+                        "internalParty": "internal_party_test"
+                    },
+                    {
+                        "externalParty": "external_party_test"
+                    }
+                ],
+                "portfolio": {
+                    "internalPortfolio": "portfolio_a",
+                    "externalPortfolio": "portfolio_b"
+                },
+                "trader": {
+                    "internalTrader": "trader_a",
+                    "externalTrader": "trader_b"
                 }
-            ],
-            "portfolio": {
-                "internalPortfolio": "portfolio_a",
-                "externalPortfolio": "portfolio_b"
             },
-            "trader": {
-                "internalTrader": "trader_a",
-                "externalTrader": "trader_b"
+            "metadata": {
+                "type": "tradeHeader",
+                "version": "1.0"
             }
         },
-        "metadata": {
-            "type": "tradeHeader",
-            "version": "1.0"
-        }
-    },
-    "tradeEconomics": {
-        "commoditySwap": {
-            "buySell": "buy",
-            "effectiveDate": "2024-12-01",
-            "terminationDate": "2025-12-01",
-            "underlyer": "MCU",
-            "notionalQuantity": {
-                "quantity": 100,
-                "unit": "tonne"
-            },
-            "paymentCurrency": "",
-            "fixedLeg": {
-                "fixedPrice": 9000.0,
-                "priceUnit": "usd"
-            },
-            "floatLeg": {
-                "referencePrice": "LME",
-                "resetDates": []
+        "tradeEconomics": {
+            "commoditySwap": {
+                "effectiveDate": {},
+                "terminationDate": {},
+                "settlementCurrency": "",
+                "fixedLeg": {
+                    "payerPartyReference": {
+                        "href": ""
+                    },
+                    "receiverPartyReference": {
+                        "href": ""
+                    },
+                    "calculationPeriodsScheduleReference": {
+                        "href": ""
+                    },
+                    "fixedPrice": {
+                        "price": "",
+                        "priceCurrency": "",
+                        "priceUnit": ""
+                    },
+                    "notionalQuantity": {
+                        "quantityUnit": "",
+                        "quantityFrequency": "",
+                        "quantity": ""
+                    },
+                    "totalNotionalQuantity": ""
+                },
+                "floatingLeg": {
+                    "payerPartyReference": {
+                        "href": ""
+                    },
+                    "receiverPartyReference": {
+                        "href": ""
+                    },
+                    "calculationPeriodsSchedule": {
+                        "id": "",
+                        "periodMultiplier": "",
+                        "period": "",
+                        "balanceOfFirstPeriod": "false"
+                    },
+                    "commodity": {
+                        "instrumentId": "",
+                        "specifiedPrice": "",
+                        "deliveryDates": ""
+                    },
+                    "notionalQuantity": {
+                        "quantityUnit": "",
+                        "quantityFrequency": "",
+                        "quantity": ""
+                    },
+                    "totalNotionalQuantity": ""
+                }
             }
-        }
-    },
-    "tradeFooter": {
+        },
         "tradeFooter": {
-            "placeholderField1": "",
-            "placeholderField2": ""
+            "tradeFooter": {
+                "placeholderField1": "",
+                "placeholderField2": ""
+            },
+            "metadata": {
+                "type": "tradeFooter",
+                "version": "1.0"
+            }
         },
-        "metadata": {
-            "type": "tradeFooter",
-            "version": "1.0"
+        "messageFooter": {
+            "checksum": null
         }
-    },
-    "messageFooter": {
-        "checksum": null
     }
-}
+]

@@ -17,9 +17,9 @@ import sys
 import argparse
 import logging
 
-from hgraph_trade.hgraph_trade_booker.trade_loader import load_trade_from_file
-from hgraph_trade.hgraph_trade_booker.trade_mapper import map_trade_to_model
-from hgraph_trade.hgraph_trade_booker.trade_booker import book_trade
+from trade_loader import load_trade_from_file
+from trade_mapper import map_trade_to_model
+from trade_booker import book_trade
 
 from hgraph_trade.logging_config import setup_logging  # Ensure logging_config is also updated if moved
 
@@ -73,14 +73,13 @@ def main():
         trade_data = load_trade_from_file(args.input_file)
         logging.debug("Loaded trade data: %s", trade_data)
 
-        # Check for essential fields
-        required_keys = {"instrument", "sub_instrument", "tradeType"}
+        # Check for essential fields (removed 'sub_instrument')
+        required_keys = {"instrument", "tradeType"}
         missing_keys = required_keys - trade_data.keys()
         if missing_keys:
             raise ValueError(f"Missing required keys in trade data: {missing_keys}")
 
         logging.debug("Detected instrument: %s", trade_data.get("instrument", ""))
-        logging.debug("Detected sub-instrument: %s", trade_data.get("sub_instrument", ""))
 
         logging.info("Mapping trade data to model.")
         trade_model = map_trade_to_model(trade_data)

@@ -14,10 +14,8 @@ import re
 import logging
 from typing import Dict, Any
 
-from hgraph_trade.hgraph_trade_mapping.fpml_mappings import (
-    map_instrument_type,
-    map_sub_instrument_type
-)
+from hgraph_trade.hgraph_trade_mapping.instrument_mappings import map_pricing_instrument
+
 
 def validate_required_keys(file_content: str, required_keys: Dict[str, Any]) -> None:
     """
@@ -28,8 +26,10 @@ def validate_required_keys(file_content: str, required_keys: Dict[str, Any]) -> 
     :raises ValueError: If any required key is missing.
     """
     for key in required_keys:
-        if not re.search(rf'"{key}"\s*:', file_content):
+        pattern = rf'"{key}"\s*:'
+        if not re.search(pattern, file_content):
             raise ValueError(f"Missing required key: {key}")
+
 
 def validate_nested_fields(file_content: str, nested_keys: Dict[str, list]) -> None:
     """
@@ -45,6 +45,7 @@ def validate_nested_fields(file_content: str, nested_keys: Dict[str, list]) -> N
             if not re.search(pattern, file_content):
                 raise ValueError(f"Missing nested key: {parent}.{child}")
 
+
 def validate_trade_file_with_regex(file_content: str) -> None:
     """
     Validate the trade file's structure using regex before JSON parsing.
@@ -54,7 +55,7 @@ def validate_trade_file_with_regex(file_content: str) -> None:
     :param file_content: Content of the trade file as a string.
     :raises ValueError: If validation fails (e.g., missing keys).
     """
-    required_keys = ["tradeType", "instrument", "sub_instrument", "trade_id", "counterparty", "portfolio", "traders"]
+    required_keys = ["tradeType", "instrument", "trade_id", "counterparty", "portfolio", "traders"]
     nested_keys = {
         "traders": ["internal", "external"],
         "counterparty": ["internal", "external"],
@@ -64,25 +65,20 @@ def validate_trade_file_with_regex(file_content: str) -> None:
     validate_required_keys(file_content, required_keys)
     validate_nested_fields(file_content, nested_keys)
 
+
 def validate_instrument_types(trade_data: Dict[str, Any]) -> None:
     """
-    Validate that the instrument and sub-instrument are supported according to known mappings.
+    Validate that the instrument is supported according to known mappings.
 
     :param trade_data: Parsed trade data dictionary.
-    :raises ValueError: If the instrument or sub-instrument is not supported.
+    :raises ValueError: If the instrument is not supported.
     """
     raw_instrument = trade_data.get("instrument", "UnknownInstrument")
-    raw_sub_instrument = trade_data.get("sub_instrument", "UnknownSubInstrument")
-
-    instrument_type = map_instrument_type(raw_instrument)
-    sub_instrument_type = map_sub_instrument_type(raw_sub_instrument)
-
-    logging.debug(f"Instrument type: {instrument_type}, Sub-instrument type: {sub_instrument_type}")
+    instrument_type, _ = map_pricing_instrument(raw_instrument)
 
     if instrument_type == "UnknownInstrument":
         raise ValueError(f"Unsupported instrument type: {raw_instrument}")
-    if sub_instrument_type == "UnknownSubInstrument":
-        raise ValueError(f"Unsupported sub-instrument type: {raw_sub_instrument}")
+
 
 def validate_field_with_regex(field_value: str, pattern: str, field_name: str) -> None:
     """
@@ -95,6 +91,7 @@ def validate_field_with_regex(field_value: str, pattern: str, field_name: str) -
     """
     if not re.match(pattern, field_value):
         raise ValueError(f"Invalid format for {field_name}: {field_value}")
+
 
 def additional_validations(trade_data: Dict[str, Any]) -> None:
     """
@@ -111,6 +108,7 @@ def additional_validations(trade_data: Dict[str, Any]) -> None:
             pattern=r'^\d{4}-\d{2}-\d{2}$',
             field_name="trade_date"
         )
+
 
 def load_trade_from_file(file_path: str) -> Dict[str, Any]:
     """
@@ -141,6 +139,7 @@ def load_trade_from_file(file_path: str) -> Dict[str, Any]:
 
     return trade_data
 
+
 def fetch_trade_from_hgraph(trade_id: str) -> Dict[str, Any]:
     """
     Placeholder function to fetch trade data from the hgraph database.
@@ -150,6 +149,7 @@ def fetch_trade_from_hgraph(trade_id: str) -> Dict[str, Any]:
     """
     # Implement actual database fetch logic here if required
     return {}
+
 
 # Example usage (for demonstration or testing)
 if __name__ == "__main__":

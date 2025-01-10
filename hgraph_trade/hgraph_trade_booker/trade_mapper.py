@@ -23,7 +23,7 @@ from hgraph_trade.hgraph_trade_model import (
     get_instrument_mapping
 )
 from hgraph_trade.hgraph_trade_mapping.instrument_mappings import map_pricing_instrument
-from hgraph_trade.decomposition import decompose_instrument
+from decomposition import decompose_instrument
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +32,7 @@ def map_trade_to_model(trade_data: Dict[str, Any]) -> List[Dict[str, Any]]:
     Map raw trade data to one or more trade messages, depending on decomposition requirements.
 
     Steps:
-    - Determine instrument and sub-instrument from pricing instrument.
+    - Determine instrument and sub-instrument from the "instrument" field in trade data.
     - Decompose into multiple trades if needed.
     - For each decomposed trade data:
         - Create message header, trade header, trade footer.
@@ -43,8 +43,9 @@ def map_trade_to_model(trade_data: Dict[str, Any]) -> List[Dict[str, Any]]:
     :param trade_data: Dictionary containing raw trade data.
     :return: A list of dictionaries, each representing a compiled trade message.
     """
-    pricing_instrument = trade_data.get("pricing_instrument", "")
-    instrument_type, sub_instrument_type = map_pricing_instrument(pricing_instrument)
+    # UPDATED: use the "instrument" field instead of "pricing_instrument"
+    instrument_key = trade_data.get("instrument", "")
+    instrument_type, sub_instrument_type = map_pricing_instrument(instrument_key)
 
     decomposed_trade_data_list = decompose_instrument(trade_data, instrument_type, sub_instrument_type)
     all_messages = []
@@ -61,9 +62,7 @@ def map_trade_to_model(trade_data: Dict[str, Any]) -> List[Dict[str, Any]]:
         header_data = dict(single_trade_data)
         message["tradeHeader"] = create_trade_header(header_data)
 
-        # Determine which creator to call
-        # Some instruments may have sub_instrument_type == None
-        # Adjust logic accordingly
+        # Determine which creator to call based on instrument_type
         if instrument_type == "swap":
             trades_created = create_commodity_swap(single_trade_data, sub_instrument_type=sub_instrument_type)
         elif instrument_type == "option":
@@ -80,26 +79,20 @@ def map_trade_to_model(trade_data: Dict[str, Any]) -> List[Dict[str, Any]]:
         elif instrument_type == "fx":
             trades_created = create_fx_trade(single_trade_data)
         elif instrument_type == "cash":
-            # If cash just returns something simple
             trades_created = [{"cashTrade": {}}]
         else:
             raise ValueError(f"Unsupported instrument: {instrument_type}")
 
-        # trades_created should be a list of trades (usually length 1)
-        # but we can assume each call returns a single-element list for now.
-        # If that changes, adjust accordingly.
-        # For now, we take the first element:
+        # If we get a list, take the first trade. If we get a dict, just use it directly.
         if isinstance(trades_created, list):
             trade_economics = trades_created[0]
         else:
-            # For backward compatibility if not converted
             trade_economics = trades_created
 
         message["tradeEconomics"] = trade_economics
 
         footer_data = dict(single_trade_data)
         message["tradeFooter"] = create_trade_footer(footer_data)
-
         message["messageFooter"] = create_message_footer()
 
         all_messages.append(message)

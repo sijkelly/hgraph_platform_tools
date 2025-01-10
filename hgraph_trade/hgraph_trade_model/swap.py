@@ -20,8 +20,9 @@ from hgraph_trade.hgraph_trade_mapping.fpml_mappings import (
     get_global_mapping,
     get_instrument_mapping,
     map_hgraph_to_fpml,
-    map_sub_instrument_type
 )
+from hgraph_trade.hgraph_trade_mapping.instrument_mappings import map_pricing_instrument
+
 
 def create_commodity_swap(trade_data: Dict[str, Any], sub_instrument_type: str) -> list:
     global_mapping = get_global_mapping()
@@ -204,7 +205,9 @@ def main() -> None:
         sys.exit(1)
 
     trade_data = json.loads(sys.argv[1])
-    mapped_sub_instrument = map_sub_instrument_type(trade_data.get("sub_instrument", ""))
+    mapped_instrument, mapped_sub_instrument = map_pricing_instrument(
+        trade_data.get("sub_instrument", "")
+    )
     commodity_swap = create_commodity_swap(trade_data, mapped_sub_instrument)
     print(json.dumps(commodity_swap, indent=4))
 
