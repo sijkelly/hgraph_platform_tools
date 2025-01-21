@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Fixed-Float Swap Notification</title>
+    <style>
+        /* Inline styling for a more polished email format (optional) */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            line-height: 1.4;
+            color: #333333;
+        }
+
+        h1, h2, h3 {
+            font-weight: normal;
+            margin-bottom: 10px;
+        }
+
+        table {
+            border-collapse: collapse;
+            margin-top: 20px;
+            width: 100%;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 8px;
+            border-bottom: 1px solid #dddddd;
+        }
+
+        .footer {
+            margin-top: 40px;
+            font-size: 0.9em;
+            color: #666666;
+        }
+
+        .highlight {
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>New Swap Trade Notification</h1>
+
+    <p>Hello {{ client_name }},</p>
+
+    <p>
+        We are writing to inform you that a new
+        <span class="highlight">Fixed-Float Swap</span> trade has been executed on your behalf.
+        Below are the key details for your records:
+    </p>
+
+    <table>
+        <tr>
+            <th>Trade ID</th>
+            <td>{{ trade_id }}</td>
+        </tr>
+        <tr>
+            <th>Execution Timestamp</th>
+            <td>{{ trade_timestamp }}</td>
+        </tr>
+        <tr>
+            <th>Notional Amount</th>
+            <td>{{ notional_amount }}</td>
+        </tr>
+        <tr>
+            <th>Currency</th>
+            <td>{{ currency }}</td>
+        </tr>
+        <tr>
+            <th>Start Date</th>
+            <td>{{ start_date }}</td>
+        </tr>
+        <tr>
+            <th>Maturity Date</th>
+            <td>{{ maturity_date }}</td>
+        </tr>
+        <tr>
+            <th>Fixed Rate</th>
+            <td>{{ fixed_rate }}</td>
+        </tr>
+        <tr>
+            <th>Floating Rate Index</th>
+            <td>{{ floating_rate_index }}</td>
+        </tr>
+        <tr>
+            <th>Floating Rate Spread</th>
+            <td>{{ floating_rate_spread }}</td>
+        </tr>
+        <tr>
+            <th>Side (Client Perspective)</th>
+            <!--
+                 If you're inverting the buy/sell perspective for the client:
+                 e.g., if internal system says "BUY", you'd pass "SELL" to the template
+            -->
+            <td>{{ client_side }}</td>
+        </tr>
+    </table>
+
+    <p>
+        If you have any questions about this transaction, please reply to this email, and we will be happy to assist you.
+    </p>
+
+    <!--
+         Include the universal disclaimer.
+         Adjust the file path based on your actual directory structure, for instance:
+         hgraph_notification/templates/disclaimers/disclaimer.html
+    -->
+    <div class="footer">
+        {% include "disclaimers/notification_disclaimer.html" %}
+    </div>
+
+</body>
+</html>
