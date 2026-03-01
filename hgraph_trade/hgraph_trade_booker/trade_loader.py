@@ -16,6 +16,8 @@ from typing import Dict, Any
 
 from hgraph_trade.hgraph_trade_mapping.instrument_mappings import map_pricing_instrument
 
+logger = logging.getLogger(__name__)
+
 
 def validate_required_keys(file_content: str, required_keys: Dict[str, Any]) -> None:
     """

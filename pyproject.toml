@@ -1,14 +1,32 @@
 [tool.poetry]
-name = "poetry config virtualenvs-in-project true"
-version = "poetry add pandas numpy pymongo hgraph"
+name = "hgraph-platform-tools"
+version = "0.1.0"
 description = ""
 authors = ["Simon Kelly <si.j.kelly@gmail.com>"]
 readme = "README.md"
-packages = [{include = "poetry config virtualenvs"}]
+package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.13"
+pandas = "*"
+numpy = "*"
+pymongo = "*"
+hgraph = "*"
+jinja2 = "*"
+requests = "*"
+kafka-python = "*"
+xmlschema = "*"
+python-dotenv = "*"
 
+[tool.poetry.scripts]
+hgraph = "cli:main"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "*"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
 
 [build-system]
 requires = ["poetry-core"]

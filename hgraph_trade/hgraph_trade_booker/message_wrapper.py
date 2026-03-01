@@ -12,6 +12,8 @@ from typing import Dict, Any
 import datetime
 import hashlib
 
+from secure_config import config
+
 def create_message_header(msg_type: str, sender: str, target: str) -> Dict[str, Any]:
     """
     Create a message header with metadata for routing and processing.
@@ -25,8 +27,8 @@ def create_message_header(msg_type: str, sender: str, target: str) -> Dict[str, 
         "messageType": msg_type,
         "senderCompID": sender,
         "targetCompID": target,
-        "sendingTime": datetime.datetime.utcnow().isoformat() + "Z",
-        "messageVersion": "1.0"
+        "sendingTime": datetime.datetime.now(datetime.timezone.utc).isoformat() + "Z",
+        "messageVersion": config["MESSAGE_VERSION"]
     }
 
 def create_message_footer() -> Dict[str, Any]:

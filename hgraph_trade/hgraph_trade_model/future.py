@@ -18,7 +18,7 @@ def map_hgraph_to_fpml(trade_data: Dict[str, Any], mapping: Dict[str, str]) -> D
 
 def create_commodity_future(trade_data: Dict[str, Any]) -> list:
     global_mapping = get_global_mapping()
-    future_mapping = get_instrument_mapping("comm_future")
+    future_mapping = get_instrument_mapping("future")
     combined_mapping = {**global_mapping, **future_mapping}
     fpml_data = map_hgraph_to_fpml(trade_data, combined_mapping)
 

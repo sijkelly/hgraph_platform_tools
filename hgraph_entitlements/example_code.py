@@ -5,10 +5,15 @@ using a forward propagated graph approach.
 """
 
 import argparse
+import logging
 import re
 import sqlite3
 from collections import deque
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+
+from secure_config import config
+
+logger = logging.getLogger(__name__)
 
 # Static mapping of roles to allowed actions.
 # This mapping is hard-coded and changes require a release.
@@ -65,7 +70,7 @@ def dispatch_event(event_name: str, payload: Any) -> None:
             # In a real system, each handler would call dispatch_event as needed.
 
 
-def get_db_connection(db_path: str = "hgraph_entitlements.db") -> sqlite3.Connection:
+def get_db_connection(db_path: str = None) -> sqlite3.Connection:
     """
     Create and return a connection to the SQLite database.
 
@@ -75,6 +80,8 @@ def get_db_connection(db_path: str = "hgraph_entitlements.db") -> sqlite3.Connec
     Returns:
         sqlite3.Connection: Database connection object.
     """
+    if db_path is None:
+        db_path = config["ENTITLEMENTS_DB_PATH"]
     return sqlite3.connect(db_path)
 
 
@@ -150,7 +157,7 @@ def permission_event_handler(payload: Dict[str, Any]) -> None:
     user_id = payload.get("user_id")
     role = payload.get("role")
     # In a real system, additional propagation (like cache refresh or audit logging) would occur.
-    print(f"[Event] User '{user_id}' role updated to '{role}'. Allowed actions: {STATIC_ROLES.get(role)}")
+    logger.info("User '%s' role updated to '%s'. Allowed actions: %s", user_id, role, STATIC_ROLES.get(role))
 
 
 def setup_cli() -> argparse.Namespace:
@@ -188,13 +195,13 @@ def main() -> None:
 
     if args.command == "update":
         update_user_role(conn, args.user_id, args.role)
-        print(f"Updated user '{args.user_id}' to role '{args.role}'.")
+        logger.info("Updated user '%s' to role '%s'.", args.user_id, args.role)
     elif args.command == "query":
         role = get_user_role(conn, args.user_id)
         if role:
-            print(f"User '{args.user_id}' has role '{role}' with allowed actions: {STATIC_ROLES.get(role)}.")
+            logger.info("User '%s' has role '%s' with allowed actions: %s.", args.user_id, role, STATIC_ROLES.get(role))
         else:
-            print(f"User '{args.user_id}' not found.")
+            logger.warning("User '%s' not found.", args.user_id)
     conn.close()
 
 

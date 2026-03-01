@@ -8,11 +8,17 @@ in a local SQLite database. The data flow follows a forward propagation graph
 (FPG) style.
 """
 
-import sqlite3
-import re
 import argparse
+import logging
+import re
+import sqlite3
 from typing import List, Dict, Any
+
 import requests
+
+from secure_config import config
+
+logger = logging.getLogger(__name__)
 
 
 def init_db(db_path: str) -> None:
@@ -151,7 +157,7 @@ def run_pipeline(api_url: str, db_path: str) -> None:
     processed_data = process_counterparty_data(raw_data)
     # Stage 3: Store
     store_counterparty_data(db_path, processed_data)
-    print("Static data pipeline completed successfully.")
+    logger.info("Static data pipeline completed successfully.")
 
 
 def parse_cli_args() -> argparse.Namespace:
@@ -171,13 +177,13 @@ def parse_cli_args() -> argparse.Namespace:
     parser.add_argument(
         "--db-path",
         type=str,
-        default="static_data.db",
+        default=config["STATIC_DATA_DB_PATH"],
         help="Path to the SQLite database file",
     )
     parser.add_argument(
         "--api-url",
         type=str,
-        default="http://example.com/api/counterparties",
+        default=config["STATIC_DATA_API_URL"],
         help="API URL for fetching static data",
     )
     return parser.parse_args()
@@ -190,7 +196,7 @@ def main() -> None:
     args = parse_cli_args()
     if args.init_db:
         init_db(args.db_path)
-        print(f"Database initialized at {args.db_path}")
+        logger.info("Database initialized at %s", args.db_path)
     if args.fetch:
         run_pipeline(args.api_url, args.db_path)
 

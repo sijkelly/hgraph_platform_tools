@@ -21,7 +21,7 @@ def map_hgraph_to_fpml(trade_data: Dict[str, Any], mapping: Dict[str, str]) -> D
 
 def create_commodity_option(trade_data: Dict[str, Any]) -> list:
     global_mapping = get_global_mapping()
-    option_mapping = get_instrument_mapping("comm_option")
+    option_mapping = get_instrument_mapping("option")
     combined_mapping = {**global_mapping, **option_mapping}
 
     fpml_data = map_hgraph_to_fpml(trade_data, combined_mapping)

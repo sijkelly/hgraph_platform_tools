@@ -12,6 +12,7 @@ Example Usage (CLI):
 
 import argparse
 import json
+import logging
 import os
 import re
 import smtplib
@@ -21,6 +22,10 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 import jinja2
+
+from secure_config import config
+
+logger = logging.getLogger(__name__)
 
 
 def load_trade_data(file_path: str) -> Dict[str, Any]:
@@ -72,8 +77,9 @@ def event_driven_notification(trade_data: Dict[str, Any]) -> None:
         trade_data["currency"] = re.sub(r"[^A-Za-z]", "", trade_data["currency"]).upper()
 
     # 3. Set up Jinja2 environment (point to your template folder)
+    template_dir = config["NOTIFICATION_TEMPLATE_DIR"]
     env = jinja2.Environment(
-        loader=jinja2.FileSystemLoader("hgraph_notification/templates"),
+        loader=jinja2.FileSystemLoader(template_dir),
         autoescape=jinja2.select_autoescape(["html", "xml"])
     )
 
@@ -83,14 +89,13 @@ def event_driven_notification(trade_data: Dict[str, Any]) -> None:
     # 5. Render the template with the trade data
     html_content = template.render(**trade_data)
 
-    # 6. Prepare SMTP credentials (from environment for security)
-    smtp_host = os.getenv("SMTP_HOST", "smtp.example.com")
-    smtp_port = int(os.getenv("SMTP_PORT", "587"))
-    smtp_user = os.getenv("SMTP_USER", "user@example.com")
-    smtp_pass = os.getenv("SMTP_PASS", "password")
-    sender_email = os.getenv("SENDER_EMAIL", "sender@example.com")
-    # For testing, you can store a developer email in RECIPIENT_EMAIL env var
-    recipient_email = os.getenv("RECIPIENT_EMAIL", "test_developer@example.com")
+    # 6. Prepare SMTP credentials from central config
+    smtp_host = config["SMTP_HOST"]
+    smtp_port = int(config["SMTP_PORT"])
+    smtp_user = config["SMTP_USER"]
+    smtp_pass = config["SMTP_PASS"]
+    sender_email = config["SENDER_EMAIL"]
+    recipient_email = config["RECIPIENT_EMAIL"]
 
     # 7. Construct the email
     message = MIMEMultipart("alternative")
@@ -105,9 +110,9 @@ def event_driven_notification(trade_data: Dict[str, Any]) -> None:
             server.starttls()
             server.login(smtp_user, smtp_pass)
             server.sendmail(sender_email, recipient_email, message.as_string())
-        print(f"Email sent to: {recipient_email}")
+        logger.info("Email sent to: %s", recipient_email)
     except Exception as e:
-        print(f"Failed to send email. Error: {e}")
+        logger.error("Failed to send email: %s", e)
 
 
 def main() -> None:

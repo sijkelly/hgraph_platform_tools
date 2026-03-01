@@ -13,6 +13,7 @@ Modules:
 - fx.py
 - trade_header.py
 - trade_footer.py
+- cash.py
 """
 
 from .swap import create_commodity_swap
@@ -22,6 +23,7 @@ from .future import create_commodity_future
 from .physical import create_commodity_physical
 from .swaption import create_commodity_swaption
 from .fx import create_fx_trade
+from .cash import create_cash_trade
 from .trade_header import create_trade_header
 from .trade_footer import create_trade_footer
 from hgraph_trade.hgraph_trade_mapping import (
@@ -39,6 +41,7 @@ __all__ = [
     "create_commodity_physical",
     "create_commodity_swaption",
     "create_fx_trade",
+    "create_cash_trade",
     "create_trade_header",
     "create_trade_footer",
     "get_global_mapping",

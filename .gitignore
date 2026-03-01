@@ -1,2 +1,36 @@
 # .gitignore
 .env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+venv/
+.venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Generated FpML tag files (regenerate from XSD with fpml_XSD_parser.py)
+hgraph_trade/fpml_xsd_reference_files/fpml_tags.py
+hgraph_trade/fpml_xsd_reference_files/fpml_tags.json
+hgraph_trade/fpml_xsd_reference_files/output_fpml_tags.py
+
+# SQLite databases
+*.db
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Booked trade output & quarantine
+output/
+quarantine/

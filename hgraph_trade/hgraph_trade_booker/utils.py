@@ -9,7 +9,8 @@ of preparing and saving trade data for downstream systems.
 import os
 import json
 from typing import Dict, Any, Optional
-from hgraph_trade.hgraph_trade_mapping.fpml_mappings import get_global_mapping, map_instrument_type
+from hgraph_trade.hgraph_trade_mapping.fpml_mappings import get_global_mapping
+from hgraph_trade.hgraph_trade_mapping.instrument_mappings import map_pricing_instrument
 
 
 def ensure_directory_exists(directory: str) -> None:
@@ -69,4 +70,5 @@ def map_trade_type(hgraph_type: str) -> Optional[str]:
     :param hgraph_type: The hgraph trade type string.
     :return: The corresponding FpML trade type, or None if no mapping exists.
     """
-    return map_instrument_type(hgraph_type)
+    instrument, _ = map_pricing_instrument(hgraph_type)
+    return instrument

@@ -1,68 +1,64 @@
-#!/usr/bin/env python3
 """
 secure_config.py
 
-This script demonstrates how to handle sensitive configuration data (such as SMTP credentials)
-securely using environment variables and, optionally, the python-dotenv package for local development.
+Centralised configuration for the hgraph_platform_tools project.
+All configurable values are loaded from environment variables with sensible defaults.
+For local development, create a .env file in the project root (see .env.example).
+
+Usage:
+    from secure_config import config
+    smtp_host = config["SMTP_HOST"]
 """
 
 import os
 from typing import Dict
 
-from dotenv import load_dotenv
-import os
-
-load_dotenv()  # This will look for .env in the project root
-
-SMTP_HOST = os.getenv("SMTP_HOST", "smtp.example.com")
-SMTP_PASS = os.getenv("SMTP_PASS", None)
-...
-
-# Optional: If python-dotenv is installed, we can load a local .env file.
-# If python-dotenv isn't installed, this import will fail silently.
 try:
     from dotenv import load_dotenv
-    DOTENV_AVAILABLE = True
+    load_dotenv()
 except ImportError:
-    DOTENV_AVAILABLE = False
+    pass  # python-dotenv not installed; rely on OS-level environment variables
 
 
 def load_secure_config() -> Dict[str, str]:
     """
-    Load environment variables required for secure configuration.
-
-    If python-dotenv is available, load values from a .env file (useful in local/dev).
-    For production, it is best to set environment variables at the OS level
-    or through a secret manager rather than relying on local files.
+    Load all configuration values from environment variables.
 
     Returns:
-        Dict[str, str]: A dictionary containing keys such as SMTP_HOST, SMTP_USER, etc.
+        Dict[str, str]: Configuration dictionary with all platform settings.
     """
-    if DOTENV_AVAILABLE:
-        load_dotenv()  # Load from .env if present
-
-    config_data = {
+    return {
+        # --- SMTP / Email ---
         "SMTP_HOST": os.getenv("SMTP_HOST", "smtp.example.com"),
         "SMTP_PORT": os.getenv("SMTP_PORT", "587"),
-        "SMTP_USER": os.getenv("SMTP_USER", "user@example.com"),
-        "SMTP_PASS": os.getenv("SMTP_PASS", "password"),
-        "SENDER_EMAIL": os.getenv("SENDER_EMAIL", "sender@example.com"),
-        "RECIPIENT_EMAIL": os.getenv("RECIPIENT_EMAIL", "test_developer@example.com"),
+        "SMTP_USER": os.getenv("SMTP_USER", ""),
+        "SMTP_PASS": os.getenv("SMTP_PASS", ""),
+        "SENDER_EMAIL": os.getenv("SENDER_EMAIL", ""),
+        "RECIPIENT_EMAIL": os.getenv("RECIPIENT_EMAIL", ""),
+
+        # --- Database ---
+        "ENTITLEMENTS_DB_PATH": os.getenv("ENTITLEMENTS_DB_PATH", "hgraph_entitlements.db"),
+        "STATIC_DATA_DB_PATH": os.getenv("STATIC_DATA_DB_PATH", "static_data.db"),
+
+        # --- API ---
+        "STATIC_DATA_API_URL": os.getenv(
+            "STATIC_DATA_API_URL", "http://localhost:8080/api/counterparties"
+        ),
+
+        # --- Kafka ---
+        "KAFKA_BOOTSTRAP_SERVERS": os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"),
+
+        # --- Trade messaging ---
+        "MESSAGE_SENDER_ID": os.getenv("MESSAGE_SENDER_ID", "hgraph_platform"),
+        "MESSAGE_TARGET_ID": os.getenv("MESSAGE_TARGET_ID", "booking_system"),
+        "MESSAGE_VERSION": os.getenv("MESSAGE_VERSION", "1.0"),
+
+        # --- Notification templates ---
+        "NOTIFICATION_TEMPLATE_DIR": os.getenv(
+            "NOTIFICATION_TEMPLATE_DIR", "hgraph_notification/templates"
+        ),
     }
 
-    return config_data
 
-
-def main() -> None:
-    """
-    CLI entry point to demonstrate secure configuration loading.
-    Run 'python secure_config.py' to print out config values for testing.
-    """
-    cfg = load_secure_config()
-    print("Loaded configuration:")
-    for key, value in cfg.items():
-        print(f"  {key} = {value}")
-
-
-if __name__ == "__main__":
-    main()
+# Module-level config instance — import this directly
+config = load_secure_config()
