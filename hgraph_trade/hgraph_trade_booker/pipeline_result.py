@@ -11,9 +11,16 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
+__all__ = (
+    "TradeStatus",
+    "TradeResult",
+    "PipelineResult",
+)
+
 
 class TradeStatus(Enum):
     """Status of an individual trade through the pipeline."""
+
     SUCCESS = "success"
     VALIDATION_FAILED = "validation_failed"
     MAPPING_FAILED = "mapping_failed"
@@ -23,27 +30,24 @@ class TradeStatus(Enum):
 
 @dataclass
 class TradeResult:
-    """
-    Result of processing a single trade through the pipeline.
+    """Result of processing a single trade through the pipeline.
 
-    Attributes:
-        trade_id: The trade identifier (if available).
-        status: The final status of the trade.
-        message: A summary of what happened.
-        error: The exception that caused failure, if any.
-        data: The processed trade data on success, or the original data on failure.
-        stage: The pipeline stage where processing stopped.
-        timestamp: When this result was created.
+    :param trade_id: The trade identifier (if available).
+    :param status: The final status of the trade.
+    :param message: A summary of what happened.
+    :param error: The exception that caused failure, if any.
+    :param data: The processed trade data on success, or the original data on failure.
+    :param stage: The pipeline stage where processing stopped.
+    :param timestamp: When this result was created.
     """
+
     trade_id: str
     status: TradeStatus
     message: str = ""
     error: Optional[Exception] = None
     data: Optional[Dict[str, Any]] = None
     stage: str = ""
-    timestamp: str = field(
-        default_factory=lambda: datetime.datetime.now(datetime.timezone.utc).isoformat()
-    )
+    timestamp: str = field(default_factory=lambda: datetime.datetime.now(datetime.timezone.utc).isoformat())
 
     @property
     def succeeded(self) -> bool:
@@ -64,18 +68,15 @@ class TradeResult:
 
 @dataclass
 class PipelineResult:
-    """
-    Aggregated result for an entire pipeline run across one or more trades.
+    """Aggregated result for an entire pipeline run across one or more trades.
 
-    Attributes:
-        results: Individual TradeResult objects.
-        started_at: When the pipeline run started.
-        finished_at: When the pipeline run finished.
+    :param results: Individual ``TradeResult`` objects.
+    :param started_at: When the pipeline run started.
+    :param finished_at: When the pipeline run finished.
     """
+
     results: List[TradeResult] = field(default_factory=list)
-    started_at: str = field(
-        default_factory=lambda: datetime.datetime.now(datetime.timezone.utc).isoformat()
-    )
+    started_at: str = field(default_factory=lambda: datetime.datetime.now(datetime.timezone.utc).isoformat())
     finished_at: Optional[str] = None
 
     def add(self, result: TradeResult) -> None:

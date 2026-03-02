@@ -16,6 +16,8 @@ from hgraph_trade.hgraph_trade_mapping.fpml_mappings import (
     map_hgraph_to_fpml,
 )
 
+__all__ = ("create_cash_trade",)
+
 
 def create_cash_trade(trade_data: Dict[str, Any]) -> list:
     """
@@ -56,10 +58,4 @@ def create_cash_trade(trade_data: Dict[str, Any]) -> list:
     if fpml_data.get("relatedTradeId"):
         cash_trade["relatedTradeId"] = fpml_data.get("relatedTradeId", "")
 
-    return [{
-        "cashTrade": cash_trade,
-        "metadata": {
-            "type": "cashTrade",
-            "version": "1.0"
-        }
-    }]
+    return [{"cashTrade": cash_trade, "metadata": {"type": "cashTrade", "version": "1.0"}}]

@@ -10,12 +10,16 @@ structure.
 from typing import Dict, Any
 from hgraph_trade.hgraph_trade_mapping.fpml_mappings import get_global_mapping, get_instrument_mapping
 
+__all__ = ("create_commodity_forward",)
+
+
 def map_hgraph_to_fpml(trade_data: Dict[str, Any], mapping: Dict[str, str]) -> Dict[str, Any]:
     mapped_data = {}
     for key, value in trade_data.items():
         fpml_key = mapping.get(key, key)
         mapped_data[fpml_key] = value
     return mapped_data
+
 
 def create_commodity_forward(trade_data: Dict[str, Any]) -> list:
     global_mapping = get_global_mapping()
@@ -29,14 +33,11 @@ def create_commodity_forward(trade_data: Dict[str, Any]) -> list:
         "effectiveDate": fpml_data.get("effectiveDate", ""),
         "terminationDate": fpml_data.get("terminationDate", ""),
         "underlyer": fpml_data.get("underlyer", ""),
-        "notionalQuantity": {
-            "quantity": fpml_data.get("quantity", ""),
-            "unit": fpml_data.get("unit", "")
-        },
+        "notionalQuantity": {"quantity": fpml_data.get("quantity", ""), "unit": fpml_data.get("unit", "")},
         "paymentCurrency": fpml_data.get("paymentCurrency", ""),
         "priceUnit": fpml_data.get("priceUnit", ""),
         "fixedPrice": fpml_data.get("fixedPrice", ""),
-        "deliveryLocation": fpml_data.get("deliveryLocation", "")
+        "deliveryLocation": fpml_data.get("deliveryLocation", ""),
     }
 
     return [{"commodityForward": forward}]

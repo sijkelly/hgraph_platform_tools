@@ -13,6 +13,12 @@ import logging
 import os
 from typing import Any, Dict, List, Optional
 
+__all__ = (
+    "DEFAULT_QUARANTINE_DIR",
+    "book_trade",
+    "book_trades_batch",
+)
+
 logger = logging.getLogger(__name__)
 
 # Default quarantine directory for failed trades
@@ -69,20 +75,14 @@ def book_trades_batch(
 
     for idx, message in enumerate(messages):
         # Try to extract a meaningful trade ID for the filename
-        trade_id = (
-            message.get("tradeHeader", {})
-            .get("partyTradeIdentifier", {})
-            .get("tradeId", f"trade_{idx}")
-        )
+        trade_id = message.get("tradeHeader", {}).get("partyTradeIdentifier", {}).get("tradeId", f"trade_{idx}")
         filename = f"{trade_id}.json"
 
         try:
             book_trade(message, filename, output_dir)
             booked.append(os.path.join(output_dir, filename))
         except (IOError, OSError) as exc:
-            logger.error(
-                "Trade %s failed to book, quarantining: %s", trade_id, exc
-            )
+            logger.error("Trade %s failed to book, quarantining: %s", trade_id, exc)
             try:
                 os.makedirs(quarantine_dir, exist_ok=True)
                 quarantine_path = os.path.join(quarantine_dir, filename)
@@ -95,9 +95,7 @@ def book_trades_batch(
                 quarantined.append(quarantine_path)
                 logger.info("Quarantined trade %s to %s", trade_id, quarantine_path)
             except (IOError, OSError) as q_exc:
-                logger.critical(
-                    "Failed to quarantine trade %s: %s", trade_id, q_exc
-                )
+                logger.critical("Failed to quarantine trade %s: %s", trade_id, q_exc)
 
     logger.info(
         "Batch booking complete: %d booked, %d quarantined",

@@ -20,6 +20,8 @@ import sys
 
 from hgraph_trade.logging_config import setup_logging
 
+__all__ = ("main",)
+
 logger = logging.getLogger(__name__)
 
 
@@ -47,10 +49,7 @@ def _run_book(args: argparse.Namespace) -> int:
     if args.input_file:
         files = [args.input_file]
     elif args.input_dir:
-        files = sorted(
-            globmod.glob(f"{args.input_dir}/*.json")
-            + globmod.glob(f"{args.input_dir}/*.txt")
-        )
+        files = sorted(globmod.glob(f"{args.input_dir}/*.json") + globmod.glob(f"{args.input_dir}/*.txt"))
     else:
         logger.error("Provide --input_file or --input_dir")
         return 2
@@ -71,15 +70,24 @@ def _run_book(args: argparse.Namespace) -> int:
             if not messages:
                 raise ValueError("Mapping produced zero trade messages")
             all_messages.extend(messages)
-            pipeline.add(TradeResult(
-                trade_id=str(trade_id), status=TradeStatus.SUCCESS,
-                message=f"Mapped {len(messages)} message(s)", stage="mapping",
-            ))
+            pipeline.add(
+                TradeResult(
+                    trade_id=str(trade_id),
+                    status=TradeStatus.SUCCESS,
+                    message=f"Mapped {len(messages)} message(s)",
+                    stage="mapping",
+                )
+            )
         except Exception as exc:
-            pipeline.add(TradeResult(
-                trade_id=str(trade_id), status=TradeStatus.MAPPING_FAILED,
-                message=str(exc), error=exc, stage="mapping",
-            ))
+            pipeline.add(
+                TradeResult(
+                    trade_id=str(trade_id),
+                    status=TradeStatus.MAPPING_FAILED,
+                    message=str(exc),
+                    error=exc,
+                    stage="mapping",
+                )
+            )
             logger.error("Trade %s failed: %s", trade_id, exc)
             if args.fail_fast:
                 break
@@ -88,10 +96,14 @@ def _run_book(args: argparse.Namespace) -> int:
         result = book_trades_batch(all_messages, args.output_dir)
         if result["quarantined"]:
             for qp in result["quarantined"]:
-                pipeline.add(TradeResult(
-                    trade_id=qp, status=TradeStatus.BOOKING_FAILED,
-                    message=f"Quarantined to {qp}", stage="booking",
-                ))
+                pipeline.add(
+                    TradeResult(
+                        trade_id=qp,
+                        status=TradeStatus.BOOKING_FAILED,
+                        message=f"Quarantined to {qp}",
+                        stage="booking",
+                    )
+                )
 
     pipeline.finalise()
     print("\n" + pipeline.summary())
@@ -121,8 +133,12 @@ def _add_entitlements_parser(subparsers: argparse._SubParsersAction) -> None:
 
 def _run_entitlements(args: argparse.Namespace) -> int:
     from hgraph_entitlements import (
-        STATIC_ROLES, get_db_connection, initialize_db,
-        get_user_role, update_user_role, check_permission,
+        STATIC_ROLES,
+        get_db_connection,
+        initialize_db,
+        get_user_role,
+        update_user_role,
+        check_permission,
     )
 
     conn = get_db_connection()
@@ -139,8 +155,7 @@ def _run_entitlements(args: argparse.Namespace) -> int:
     elif args.ent_command == "query":
         role = get_user_role(conn, args.user_id)
         if role:
-            logger.info("User '%s' has role '%s'. Allowed actions: %s",
-                        args.user_id, role, STATIC_ROLES.get(role))
+            logger.info("User '%s' has role '%s'. Allowed actions: %s", args.user_id, role, STATIC_ROLES.get(role))
         else:
             logger.warning("User '%s' not found.", args.user_id)
             return 1
@@ -195,8 +210,10 @@ def _add_notify_parser(subparsers: argparse._SubParsersAction) -> None:
 
 def _run_notify(args: argparse.Namespace) -> int:
     from hgraph_notification.scripts.notification_email import (
-        load_trade_data, event_driven_notification,
+        load_trade_data,
+        event_driven_notification,
     )
+
     trade_info = load_trade_data(args.file)
     event_driven_notification(trade_info)
     return 0
@@ -214,8 +231,12 @@ def _add_parse_xsd_parser(subparsers: argparse._SubParsersAction) -> None:
 
 def _run_parse_xsd(args: argparse.Namespace) -> int:
     from hgraph_trade.fpml_xsd_reference_files.fpml_XSD_parser import (
-        parse_xsd_schema, save_fpml_tags, DEFAULT_XSD, DEFAULT_OUTPUT,
+        parse_xsd_schema,
+        save_fpml_tags,
+        DEFAULT_XSD,
+        DEFAULT_OUTPUT,
     )
+
     xsd = args.xsd or DEFAULT_XSD
     output = args.output or DEFAULT_OUTPUT
     fpml_tags = parse_xsd_schema(xsd)
@@ -233,7 +254,9 @@ def main() -> None:
         description="hgraph_platform_tools — unified command-line interface",
     )
     parser.add_argument(
-        "--verbose", "-v", action="store_true",
+        "--verbose",
+        "-v",
+        action="store_true",
         help="Enable debug logging (applies to all subcommands)",
     )
 

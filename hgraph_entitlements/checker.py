@@ -29,6 +29,13 @@ from hgraph_entitlements.example_code import (
     initialize_db,
 )
 
+__all__ = (
+    "PermissionDeniedError",
+    "get_allowed_actions",
+    "check_permission",
+    "require_permission",
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -42,10 +49,7 @@ class PermissionDeniedError(PermissionError):
         if role is None:
             msg = f"User '{user_id}' not found in entitlements database"
         else:
-            msg = (
-                f"User '{user_id}' (role='{role}') does not have "
-                f"permission for action '{action}'"
-            )
+            msg = f"User '{user_id}' (role='{role}') does not have " f"permission for action '{action}'"
         super().__init__(msg)
 
 

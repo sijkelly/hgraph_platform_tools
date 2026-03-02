@@ -29,10 +29,12 @@ from hgraph_trade.hgraph_trade_model import (
     create_commodity_swaption,
     create_fx_trade,
     create_cash_trade,
-    get_instrument_mapping
+    get_instrument_mapping,
 )
 from hgraph_trade.hgraph_trade_mapping.instrument_mappings import map_pricing_instrument
 from decomposition import decompose_instrument
+
+__all__ = ("map_trade_to_model",)
 
 logger = logging.getLogger(__name__)
 
@@ -143,9 +145,7 @@ def map_trade_to_model(
     instrument_key = trade_data.get("instrument", "")
     instrument_type, sub_instrument_type = map_pricing_instrument(instrument_key)
 
-    decomposed_trade_data_list = decompose_instrument(
-        trade_data, instrument_type, sub_instrument_type
-    )
+    decomposed_trade_data_list = decompose_instrument(trade_data, instrument_type, sub_instrument_type)
 
     all_messages: List[Dict[str, Any]] = []
     errors: List[Dict[str, Any]] = []
@@ -153,9 +153,7 @@ def map_trade_to_model(
     for idx, single_trade_data in enumerate(decomposed_trade_data_list):
         trade_id = single_trade_data.get("trade_id", f"unknown-{idx}")
         try:
-            message = _build_single_message(
-                single_trade_data, instrument_type, sub_instrument_type
-            )
+            message = _build_single_message(single_trade_data, instrument_type, sub_instrument_type)
             all_messages.append(message)
         except Exception as exc:
             if fail_fast:

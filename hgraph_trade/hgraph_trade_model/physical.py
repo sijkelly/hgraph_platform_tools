@@ -26,7 +26,13 @@ from typing import Dict, Any
 from hgraph_trade.hgraph_trade_mapping.fpml_mappings import (
     get_global_mapping,
     get_instrument_mapping,
-    map_hgraph_to_fpml
+    map_hgraph_to_fpml,
+)
+
+__all__ = (
+    "PHYSICAL_SUB_INSTRUMENTS",
+    "SUB_INSTRUMENT_TO_LEG_KEY",
+    "create_commodity_physical",
 )
 
 # Valid physical sub-instrument types
@@ -119,10 +125,8 @@ def _build_adjustable_date(fpml_data: Dict[str, Any], prefix: str) -> Dict[str, 
             "adjustableDate": {
                 "unadjustedDate": unadjusted_date,
                 "dateAdjustments": {
-                    "businessDayConvention": fpml_data.get(
-                        f"{prefix}.businessDayConvention", "NotApplicable"
-                    )
-                }
+                    "businessDayConvention": fpml_data.get(f"{prefix}.businessDayConvention", "NotApplicable")
+                },
             }
         }
     return {}
@@ -144,15 +148,16 @@ def _build_delivery_quantity(fpml_data: Dict[str, Any]) -> Dict[str, Any]:
                             {
                                 "quantityUnit": step.get("quantityUnit", ""),
                                 "quantityFrequency": step.get("quantityFrequency", ""),
-                                "quantity": step.get("quantity", "")
-                            } for step in fpml_data.get("quantitySteps", [])
+                                "quantity": step.get("quantity", ""),
+                            }
+                            for step in fpml_data.get("quantitySteps", [])
                         ],
                         "deliveryPeriodsScheduleReference": {
                             "href": fpml_data.get("deliveryPeriodsScheduleReference", "")
                         },
                         "settlementPeriodsReference": [
                             {"href": ref} for ref in fpml_data.get("settlementPeriodsRefs", [])
-                        ]
+                        ],
                     }
                 ]
             }
@@ -162,13 +167,13 @@ def _build_delivery_quantity(fpml_data: Dict[str, Any]) -> Dict[str, Any]:
             "physicalQuantity": {
                 "quantityUnit": fpml_data.get("quantityUnit", ""),
                 "quantityFrequency": fpml_data.get("quantityFrequency", ""),
-                "quantity": fpml_data.get("quantity", "")
+                "quantity": fpml_data.get("quantity", ""),
             }
         }
         if fpml_data.get("totalQuantity"):
             delivery_quantity["totalPhysicalQuantity"] = {
                 "quantityUnit": fpml_data.get("totalQuantityUnit", ""),
-                "quantity": fpml_data.get("totalQuantity", "")
+                "quantity": fpml_data.get("totalQuantity", ""),
             }
         return {"deliveryQuantity": delivery_quantity}
 
@@ -303,7 +308,7 @@ def _build_physical_leg(fpml_data: Dict[str, Any], sub_instrument_type: str) -> 
                 "id": "deliveryPeriods",
                 "periodMultiplier": fpml_data.get("periodMultiplier", "1"),
                 "period": fpml_data.get("period", "T"),
-                "balanceOfFirstPeriod": fpml_data.get("balanceOfFirstPeriod", "false")
+                "balanceOfFirstPeriod": fpml_data.get("balanceOfFirstPeriod", "false"),
             }
         }
 
@@ -337,12 +342,10 @@ def _build_fixed_leg(fpml_data: Dict[str, Any]) -> Dict[str, Any]:
                 "fixedPrice": {
                     "price": fpml_data.get("fixedLeg.price", ""),
                     "priceCurrency": fpml_data.get("fixedLeg.priceCurrency", ""),
-                    "priceUnit": fpml_data.get("fixedLeg.priceUnit", "")
+                    "priceUnit": fpml_data.get("fixedLeg.priceUnit", ""),
                 },
                 "quantityReference": {"href": fpml_data.get("fixedLeg.quantityReference", "")},
-                "masterAgreementPaymentDates": fpml_data.get(
-                    "fixedLeg.masterAgreementPaymentDates", "true"
-                ) == "true"
+                "masterAgreementPaymentDates": fpml_data.get("fixedLeg.masterAgreementPaymentDates", "true") == "true",
             }
         }
     return {}
@@ -362,7 +365,7 @@ def _build_floating_leg(fpml_data: Dict[str, Any]) -> Dict[str, Any]:
                 "receiverPartyReference": {"href": fpml_data.get("floatingLeg.receiverPartyReference", "")},
                 "commodity": {
                     "instrumentId": fpml_data.get("floatingLeg.instrumentId", ""),
-                    "specifiedPrice": fpml_data.get("floatingLeg.specifiedPrice", "")
+                    "specifiedPrice": fpml_data.get("floatingLeg.specifiedPrice", ""),
                 },
                 "quantityReference": {"href": fpml_data.get("floatingLeg.quantityReference", "")},
                 "calculation": {
@@ -371,16 +374,15 @@ def _build_floating_leg(fpml_data: Dict[str, Any]) -> Dict[str, Any]:
                             "href": fpml_data.get("floatingLeg.calculationPeriodsScheduleReference", "")
                         },
                         "dayType": fpml_data.get("floatingLeg.dayType", ""),
-                        "dayDistribution": fpml_data.get("floatingLeg.dayDistribution", "")
+                        "dayDistribution": fpml_data.get("floatingLeg.dayDistribution", ""),
                     },
                     "spread": {
                         "currency": fpml_data.get("floatingLeg.spreadCurrency", ""),
-                        "amount": fpml_data.get("floatingLeg.spreadAmount", "")
-                    }
+                        "amount": fpml_data.get("floatingLeg.spreadAmount", ""),
+                    },
                 },
-                "masterAgreementPaymentDates": fpml_data.get(
-                    "floatingLeg.masterAgreementPaymentDates", "true"
-                ) == "true"
+                "masterAgreementPaymentDates": fpml_data.get("floatingLeg.masterAgreementPaymentDates", "true")
+                == "true",
             }
         }
     return {}

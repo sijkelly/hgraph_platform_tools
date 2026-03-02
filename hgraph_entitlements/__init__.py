@@ -28,7 +28,7 @@ from .checker import (
     PermissionDeniedError,
 )
 
-__all__ = [
+__all__ = (
     "STATIC_ROLES",
     "register_event",
     "dispatch_event",
@@ -40,4 +40,4 @@ __all__ = [
     "require_permission",
     "get_allowed_actions",
     "PermissionDeniedError",
-]
+)

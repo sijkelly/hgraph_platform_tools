@@ -8,6 +8,11 @@ sub-instrument mapping logic previously contained in fpml_mappings.py.
 
 from typing import Tuple, Optional
 
+__all__ = (
+    "PRICING_TO_BOOKABLE",
+    "map_pricing_instrument",
+)
+
 # Mapping from hgraph_pricing_instrument to (instrument, sub_instrument).
 # If sub_instrument is N/A, we represent it as None.
 PRICING_TO_BOOKABLE = {
@@ -20,7 +25,6 @@ PRICING_TO_BOOKABLE = {
     "crack_spread_strip": ("swap", "floatFloat"),
     "outright_box": ("swap", "fixedFloat"),
     "crack_spread_box": ("swap", "floatFloat"),
-
     "future": ("future", None),
     "future_spread": ("future", None),
     "forward": ("forward", None),
@@ -28,7 +32,6 @@ PRICING_TO_BOOKABLE = {
     "fx": ("forward", None),
     "fx_spread": ("forward", None),
     "cash": ("cash", None),
-
     "physical": ("physical", "fixedPhysical"),
     "physical_cal_spread": ("physical", "fixedPhysical"),
     "physical_index_spread": ("physical", "indexPhysical"),
@@ -37,14 +40,12 @@ PRICING_TO_BOOKABLE = {
     "physical_cal_spread_strip": ("physical", "fixedPhysical"),
     "physical_index_spread_strip": ("physical", "indexPhysical"),
     "physical_index_spread_box_strip": ("physical", "indexPhysical"),
-
     "option": ("option", "vanilla"),
     "option_spread": ("option", "vanilla"),
     "option_strip": ("option", "vanilla"),
     "option_spread_strip": ("option", "vanilla"),
     "option_collar": ("option", "vanilla"),
     "option_collar_strip": ("option", "vanilla"),
-
     "swaption": ("swaption", "vanilla"),
     "swaption_spread": ("swaption", "vanilla"),
     "swaption_strip": ("swaption", "vanilla"),

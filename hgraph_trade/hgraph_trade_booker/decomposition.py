@@ -7,6 +7,9 @@ into multiple bookable trades.
 
 from typing import Dict, Any, List
 
+__all__ = ("decompose_instrument",)
+
+
 def decompose_instrument(trade_data: Dict[str, Any], instrument: str, sub_instrument: str) -> List[Dict[str, Any]]:
     """
     Decompose a single hgraph pricing instrument into one or more bookable trade data sets.

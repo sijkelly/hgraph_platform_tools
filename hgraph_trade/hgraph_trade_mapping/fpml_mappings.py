@@ -11,6 +11,15 @@ import json
 from typing import Dict, Any
 from .instrument_mappings import map_pricing_instrument
 
+__all__ = (
+    "map_hgraph_to_fpml",
+    "HGRAPH_TO_FPML_GLOBAL_MAPPING",
+    "HGRAPH_TO_FPML_INSTRUMENT_MAPPING",
+    "get_global_mapping",
+    "get_instrument_mapping",
+)
+
+
 def map_hgraph_to_fpml(trade_data: Dict[str, Any], mapping: Dict[str, str]) -> Dict[str, Any]:
     """
     Recursively map HGraph trade data keys to their corresponding FpML keys using the provided mapping.
@@ -48,7 +57,7 @@ HGRAPH_TO_FPML_GLOBAL_MAPPING = {
     "internal_portfolio": "internalPortfolio",
     "external_portfolio": "externalPortfolio",
     "internal_trader": "internalTrader",
-    "external_trader": "externalTrader"
+    "external_trader": "externalTrader",
 }
 
 # Instrument-specific mappings: apply only to particular instruments
@@ -129,7 +138,7 @@ HGRAPH_TO_FPML_INSTRUMENT_MAPPING = {
         "receiver_party": "receiverPartyReference",
         "related_trade_id": "relatedTradeId",
         "description": "description",
-    }
+    },
 }
 
 

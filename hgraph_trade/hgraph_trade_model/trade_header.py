@@ -10,6 +10,9 @@ and references to involved parties, portfolios, and traders.
 from typing import Dict, Any
 from hgraph_trade.hgraph_trade_mapping.fpml_mappings import get_global_mapping, get_instrument_mapping
 
+__all__ = ("create_trade_header",)
+
+
 def map_hgraph_to_fpml(trade_data: Dict[str, Any], mapping: Dict[str, str]) -> Dict[str, Any]:
     """
     Map hgraph trade data keys to their corresponding FpML keys.
@@ -23,6 +26,7 @@ def map_hgraph_to_fpml(trade_data: Dict[str, Any], mapping: Dict[str, str]) -> D
         fpml_key = mapping.get(key, key)
         mapped_data[fpml_key] = value
     return mapped_data
+
 
 def create_trade_header(trade_data: Dict[str, Any]) -> Dict[str, Any]:
     """
@@ -57,28 +61,15 @@ def create_trade_header(trade_data: Dict[str, Any]) -> Dict[str, Any]:
 
     return {
         "tradeHeader": {
-            "partyTradeIdentifier": {
-                "tradeId": fpml_data.get("tradeId", "")
-            },
+            "partyTradeIdentifier": {"tradeId": fpml_data.get("tradeId", "")},
             "tradeDate": fpml_data.get("tradeDate", ""),
-            "parties": [
-                {"internalParty": internal_party},
-                {"externalParty": external_party}
-            ],
-            "portfolio": {
-                "internalPortfolio": internal_portfolio,
-                "externalPortfolio": external_portfolio
-            },
-            "trader": {
-                "internalTrader": internal_trader,
-                "externalTrader": external_trader
-            },
+            "parties": [{"internalParty": internal_party}, {"externalParty": external_party}],
+            "portfolio": {"internalPortfolio": internal_portfolio, "externalPortfolio": external_portfolio},
+            "trader": {"internalTrader": internal_trader, "externalTrader": external_trader},
         },
-        "metadata": {
-            "type": "tradeHeader",
-            "version": "1.0"
-        }
+        "metadata": {"type": "tradeHeader", "version": "1.0"},
     }
+
 
 # Example usage (commented out for production; can be tested separately)
 # if __name__ == "__main__":

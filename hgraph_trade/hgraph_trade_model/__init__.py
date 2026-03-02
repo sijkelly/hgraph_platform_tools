@@ -30,10 +30,10 @@ from hgraph_trade.hgraph_trade_mapping import (
     get_global_mapping,
     get_instrument_mapping,
     map_hgraph_to_fpml,
-    map_pricing_instrument
+    map_pricing_instrument,
 )
 
-__all__ = [
+__all__ = (
     "create_commodity_swap",
     "create_commodity_option",
     "create_commodity_forward",
@@ -48,4 +48,4 @@ __all__ = [
     "get_instrument_mapping",
     "map_hgraph_to_fpml",
     "map_pricing_instrument",
-]
+)

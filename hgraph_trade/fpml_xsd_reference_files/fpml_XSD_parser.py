@@ -93,9 +93,7 @@ def process_element(element) -> Dict[str, Any]:
         "children": {},
     }
 
-    if element.type.is_simple() or isinstance(
-        element.type, xmlschema.validators.XsdAtomicRestriction
-    ):
+    if element.type.is_simple() or isinstance(element.type, xmlschema.validators.XsdAtomicRestriction):
         tag_info["type"] = "simpleType"
         base = str(element.type.base_type) if element.type.base_type else ""
         tag_info["python_type"] = map_xsd_type_to_python(base)
@@ -104,9 +102,7 @@ def process_element(element) -> Dict[str, Any]:
         tag_info["type"] = "complexType"
         if hasattr(element.type.content, "iter_elements"):
             for child in element.type.content.iter_elements():
-                tag_info["children"][strip_namespace(child.name)] = process_element(
-                    child
-                )
+                tag_info["children"][strip_namespace(child.name)] = process_element(child)
 
     return tag_info
 
@@ -144,9 +140,7 @@ def save_fpml_tags(fpml_tags: Dict[str, dict], output_file: str) -> None:
 
 def main() -> None:
     """CLI entry point for generating the FpML tags JSON."""
-    parser = argparse.ArgumentParser(
-        description="Parse FpML XSD schemas and generate a JSON tag dictionary."
-    )
+    parser = argparse.ArgumentParser(description="Parse FpML XSD schemas and generate a JSON tag dictionary.")
     parser.add_argument(
         "--xsd",
         type=str,

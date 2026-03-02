@@ -15,17 +15,21 @@ from typing import Dict
 
 try:
     from dotenv import load_dotenv
+
     load_dotenv()
 except ImportError:
     pass  # python-dotenv not installed; rely on OS-level environment variables
 
+__all__ = (
+    "load_secure_config",
+    "config",
+)
+
 
 def load_secure_config() -> Dict[str, str]:
-    """
-    Load all configuration values from environment variables.
+    """Load all configuration values from environment variables.
 
-    Returns:
-        Dict[str, str]: Configuration dictionary with all platform settings.
+    :returns: Configuration dictionary with all platform settings.
     """
     return {
         # --- SMTP / Email ---
@@ -35,28 +39,19 @@ def load_secure_config() -> Dict[str, str]:
         "SMTP_PASS": os.getenv("SMTP_PASS", ""),
         "SENDER_EMAIL": os.getenv("SENDER_EMAIL", ""),
         "RECIPIENT_EMAIL": os.getenv("RECIPIENT_EMAIL", ""),
-
         # --- Database ---
         "ENTITLEMENTS_DB_PATH": os.getenv("ENTITLEMENTS_DB_PATH", "hgraph_entitlements.db"),
         "STATIC_DATA_DB_PATH": os.getenv("STATIC_DATA_DB_PATH", "static_data.db"),
-
         # --- API ---
-        "STATIC_DATA_API_URL": os.getenv(
-            "STATIC_DATA_API_URL", "http://localhost:8080/api/counterparties"
-        ),
-
+        "STATIC_DATA_API_URL": os.getenv("STATIC_DATA_API_URL", "http://localhost:8080/api/counterparties"),
         # --- Kafka ---
         "KAFKA_BOOTSTRAP_SERVERS": os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"),
-
         # --- Trade messaging ---
         "MESSAGE_SENDER_ID": os.getenv("MESSAGE_SENDER_ID", "hgraph_platform"),
         "MESSAGE_TARGET_ID": os.getenv("MESSAGE_TARGET_ID", "booking_system"),
         "MESSAGE_VERSION": os.getenv("MESSAGE_VERSION", "1.0"),
-
         # --- Notification templates ---
-        "NOTIFICATION_TEMPLATE_DIR": os.getenv(
-            "NOTIFICATION_TEMPLATE_DIR", "hgraph_notification/templates"
-        ),
+        "NOTIFICATION_TEMPLATE_DIR": os.getenv("NOTIFICATION_TEMPLATE_DIR", "hgraph_notification/templates"),
     }
 
 

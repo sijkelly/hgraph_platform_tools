@@ -7,7 +7,14 @@ basic metadata.
 """
 
 from typing import Dict, Any
-from hgraph_trade.hgraph_trade_mapping.fpml_mappings import get_global_mapping, get_instrument_mapping, map_hgraph_to_fpml
+from hgraph_trade.hgraph_trade_mapping.fpml_mappings import (
+    get_global_mapping,
+    get_instrument_mapping,
+    map_hgraph_to_fpml,
+)
+
+__all__ = ("create_fx_trade",)
+
 
 def create_fx_trade(trade_data: Dict[str, Any]) -> list:
     global_mapping = get_global_mapping()
@@ -21,20 +28,12 @@ def create_fx_trade(trade_data: Dict[str, Any]) -> list:
         "tradeDate": fpml_data.get("tradeDate", ""),
         "settlementDate": fpml_data.get("settlementDate", ""),
         "currencyPair": fpml_data.get("currencyPair", ""),
-        "notionalAmount": {
-            "amount": fpml_data.get("notionalAmount", 0),
-            "currency": fpml_data.get("currency", "")
-        },
-        "rate": fpml_data.get("rate", 0)
+        "notionalAmount": {"amount": fpml_data.get("notionalAmount", 0), "currency": fpml_data.get("currency", "")},
+        "rate": fpml_data.get("rate", 0),
     }
 
-    return [{
-        "fxTrade": fx_trade,
-        "metadata": {
-            "type": "fxTrade",
-            "version": "1.0"
-        }
-    }]
+    return [{"fxTrade": fx_trade, "metadata": {"type": "fxTrade", "version": "1.0"}}]
+
 
 # Example usage (commented out for production; can be tested separately)
 # if __name__ == "__main__":

@@ -13,6 +13,20 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 from secure_config import config
 
+__all__ = (
+    "STATIC_ROLES",
+    "EVENT_GRAPH",
+    "register_event",
+    "dispatch_event",
+    "get_db_connection",
+    "initialize_db",
+    "get_user_role",
+    "update_user_role",
+    "permission_event_handler",
+    "setup_cli",
+    "main",
+)
+
 logger = logging.getLogger(__name__)
 
 # Static mapping of roles to allowed actions.
@@ -41,23 +55,19 @@ EVENT_GRAPH: Dict[str, List[Callable[[Any], None]]] = {}
 
 
 def register_event(event_name: str, handler: Callable[[Any], None]) -> None:
-    """
-    Register a handler function for a specific event.
+    """Register a handler function for a specific event.
 
-    Args:
-        event_name (str): The name of the event.
-        handler (Callable[[Any], None]): Function to call when the event is dispatched.
+    :param event_name: The name of the event.
+    :param handler: Function to call when the event is dispatched.
     """
     EVENT_GRAPH.setdefault(event_name, []).append(handler)
 
 
 def dispatch_event(event_name: str, payload: Any) -> None:
-    """
-    Dispatch an event and propagate it to all registered handlers using a FIFO queue.
+    """Dispatch an event and propagate it to all registered handlers using a FIFO queue.
 
-    Args:
-        event_name (str): The name of the event.
-        payload (Any): Data associated with the event.
+    :param event_name: The name of the event.
+    :param payload: Data associated with the event.
     """
     queue: deque[Tuple[str, Any]] = deque()
     queue.append((event_name, payload))
@@ -71,14 +81,10 @@ def dispatch_event(event_name: str, payload: Any) -> None:
 
 
 def get_db_connection(db_path: str = None) -> sqlite3.Connection:
-    """
-    Create and return a connection to the SQLite database.
+    """Create and return a connection to the SQLite database.
 
-    Args:
-        db_path (str): Path to the SQLite database file.
-
-    Returns:
-        sqlite3.Connection: Database connection object.
+    :param db_path: Path to the SQLite database file.
+    :returns: Database connection object.
     """
     if db_path is None:
         db_path = config["ENTITLEMENTS_DB_PATH"]
@@ -86,34 +92,26 @@ def get_db_connection(db_path: str = None) -> sqlite3.Connection:
 
 
 def initialize_db(conn: sqlite3.Connection) -> None:
-    """
-    Initialize the entitlements database table if it does not exist.
+    """Initialise the entitlements database table if it does not exist.
 
-    Args:
-        conn (sqlite3.Connection): The database connection.
+    :param conn: The database connection.
     """
     cursor = conn.cursor()
-    cursor.execute(
-        """
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS user_entitlements (
             user_id TEXT PRIMARY KEY,
             role TEXT NOT NULL
         )
-        """
-    )
+        """)
     conn.commit()
 
 
 def get_user_role(conn: sqlite3.Connection, user_id: str) -> Optional[str]:
-    """
-    Retrieve the role of a user from the entitlements database.
+    """Retrieve the role of a user from the entitlements database.
 
-    Args:
-        conn (sqlite3.Connection): The database connection.
-        user_id (str): The unique identifier of the user.
-
-    Returns:
-        Optional[str]: The user's role if found; otherwise, None.
+    :param conn: The database connection.
+    :param user_id: The unique identifier of the user.
+    :returns: The user's role if found; otherwise *None*.
     """
     cursor = conn.cursor()
     cursor.execute("SELECT role FROM user_entitlements WHERE user_id = ?", (user_id,))
@@ -122,13 +120,12 @@ def get_user_role(conn: sqlite3.Connection, user_id: str) -> Optional[str]:
 
 
 def update_user_role(conn: sqlite3.Connection, user_id: str, role: str) -> None:
-    """
-    Update or insert a user's role in the entitlements database and dispatch an event.
+    """Update or insert a user's role in the entitlements database and dispatch an event.
 
-    Args:
-        conn (sqlite3.Connection): The database connection.
-        user_id (str): The unique identifier of the user.
-        role (str): The new role for the user.
+    :param conn: The database connection.
+    :param user_id: The unique identifier of the user.
+    :param role: The new role for the user.
+    :raises ValueError: If *role* is not in ``STATIC_ROLES``.
     """
     cursor = conn.cursor()
     # Validate role using a regex to allow only known roles (for safety)
@@ -148,11 +145,9 @@ def update_user_role(conn: sqlite3.Connection, user_id: str, role: str) -> None:
 
 
 def permission_event_handler(payload: Dict[str, Any]) -> None:
-    """
-    Example event handler that reacts to user role updates.
+    """Example event handler that reacts to user role updates.
 
-    Args:
-        payload (Dict[str, Any]): Data containing user_id and new role.
+    :param payload: Data containing ``user_id`` and new role.
     """
     user_id = payload.get("user_id")
     role = payload.get("role")
@@ -161,11 +156,9 @@ def permission_event_handler(payload: Dict[str, Any]) -> None:
 
 
 def setup_cli() -> argparse.Namespace:
-    """
-    Set up the command-line interface for managing user entitlements.
+    """Set up the command-line interface for managing user entitlements.
 
-    Returns:
-        argparse.Namespace: Parsed command-line arguments.
+    :returns: Parsed command-line arguments.
     """
     parser = argparse.ArgumentParser(description="Manage hgraph entitlements")
     subparsers = parser.add_subparsers(dest="command", required=True)

@@ -19,6 +19,11 @@ from hgraph_trade.hgraph_trade_mapping.fpml_mappings import (
     map_hgraph_to_fpml,
 )
 
+__all__ = (
+    "EXERCISE_STYLES",
+    "create_commodity_swaption",
+)
+
 EXERCISE_STYLES = ["European", "American", "Bermudan"]
 
 
@@ -38,15 +43,10 @@ def create_commodity_swaption(trade_data: Dict[str, Any]) -> list:
     # Validate exercise style
     exercise_style = fpml_data.get("exerciseStyle", "European")
     if exercise_style not in EXERCISE_STYLES:
-        raise ValueError(
-            f"Invalid exercise style: {exercise_style}. "
-            f"Expected one of {EXERCISE_STYLES}."
-        )
+        raise ValueError(f"Invalid exercise style: {exercise_style}. " f"Expected one of {EXERCISE_STYLES}.")
 
     # Calculate total premium if not provided
-    total_premium = fpml_data.get("totalPremium") or (
-        fpml_data.get("premiumPerUnit", 0) * fpml_data.get("quantity", 0)
-    )
+    total_premium = fpml_data.get("totalPremium") or (fpml_data.get("premiumPerUnit", 0) * fpml_data.get("quantity", 0))
 
     # Build premium structure
     premium = {
@@ -79,13 +79,7 @@ def create_commodity_swaption(trade_data: Dict[str, Any]) -> list:
         "underlyingSwap": underlying_swap,
     }
 
-    return [{
-        "commoditySwaption": swaption_trade,
-        "metadata": {
-            "type": "commoditySwaption",
-            "version": "1.0"
-        }
-    }]
+    return [{"commoditySwaption": swaption_trade, "metadata": {"type": "commoditySwaption", "version": "1.0"}}]
 
 
 def _build_underlying_swap(fpml_data: Dict[str, Any]) -> Dict[str, Any]:

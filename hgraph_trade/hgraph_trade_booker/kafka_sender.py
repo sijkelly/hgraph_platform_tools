@@ -23,6 +23,12 @@ from kafka import KafkaProducer, KafkaError
 
 from secure_config import config
 
+__all__ = (
+    "DEFAULT_MAX_RETRIES",
+    "DEFAULT_RETRY_BACKOFF",
+    "KafkaSender",
+)
+
 logger = logging.getLogger(__name__)
 
 # Defaults — can be overridden per-instance
@@ -110,8 +116,7 @@ class KafkaSender:
                     backoff *= 2  # exponential back-off
 
         raise KafkaError(
-            f"Failed to send message to topic '{topic}' after "
-            f"{self.max_retries} attempts: {last_error}"
+            f"Failed to send message to topic '{topic}' after " f"{self.max_retries} attempts: {last_error}"
         )
 
     def close(self) -> None:

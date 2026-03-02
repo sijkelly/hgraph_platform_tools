@@ -17,9 +17,9 @@ from .scripts.notification_email import (
 )
 from .scripts.parse_trade import parse_trade_data
 
-__all__ = [
+__all__ = (
     "load_trade_data",
     "prepare_client_side",
     "event_driven_notification",
     "parse_trade_data",
-]
+)

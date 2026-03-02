@@ -9,6 +9,9 @@ tradeFooter structure with associated metadata.
 from typing import Dict, Any
 from hgraph_trade.hgraph_trade_mapping.fpml_mappings import get_global_mapping, get_instrument_mapping
 
+__all__ = ("create_trade_footer",)
+
+
 def map_hgraph_to_fpml_footer(trade_data: Dict[str, Any], mapping: Dict[str, str]) -> Dict[str, Any]:
     """
     Map hgraph trade footer data keys to their corresponding FpML keys.
@@ -22,6 +25,7 @@ def map_hgraph_to_fpml_footer(trade_data: Dict[str, Any], mapping: Dict[str, str
         fpml_key = mapping.get(key, key)  # Use original key if no mapping exists
         mapped_data[fpml_key] = value
     return mapped_data
+
 
 def create_trade_footer(trade_data: Dict[str, Any]) -> Dict[str, Any]:
     """
@@ -44,13 +48,11 @@ def create_trade_footer(trade_data: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "tradeFooter": {
             "placeholderField1": fpml_data.get("placeholderField1", ""),
-            "placeholderField2": fpml_data.get("placeholderField2", "")
+            "placeholderField2": fpml_data.get("placeholderField2", ""),
         },
-        "metadata": {
-            "type": "tradeFooter",
-            "version": "1.0"
-        }
+        "metadata": {"type": "tradeFooter", "version": "1.0"},
     }
+
 
 # Example usage (commented out for production; can be tested separately)
 # if __name__ == "__main__":

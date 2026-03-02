@@ -18,10 +18,10 @@ from .example_code import (
     run_pipeline,
 )
 
-__all__ = [
+__all__ = (
     "init_db",
     "fetch_static_data",
     "process_counterparty_data",
     "store_counterparty_data",
     "run_pipeline",
-]
+)

@@ -25,32 +25,31 @@ import jinja2
 
 from secure_config import config
 
+__all__ = (
+    "load_trade_data",
+    "prepare_client_side",
+    "event_driven_notification",
+    "main",
+)
+
 logger = logging.getLogger(__name__)
 
 
 def load_trade_data(file_path: str) -> Dict[str, Any]:
-    """
-    Load trade data from a JSON file.
+    """Load trade data from a JSON file.
 
-    Args:
-        file_path (str): The path to the JSON file containing the trade details.
-
-    Returns:
-        Dict[str, Any]: Dictionary representation of the trade data.
+    :param file_path: The path to the JSON file containing the trade details.
+    :returns: Dictionary representation of the trade data.
     """
-    with open(file_path, 'r', encoding='utf-8') as trade_file:
+    with open(file_path, "r", encoding="utf-8") as trade_file:
         return json.load(trade_file)
 
 
 def prepare_client_side(buy_sell: str) -> str:
-    """
-    Invert the buy/sell perspective for the client.
+    """Invert the buy/sell perspective for the client.
 
-    Args:
-        buy_sell (str): Original perspective from the system (e.g., 'buy' or 'sell').
-
-    Returns:
-        str: Inverted perspective ('sell' if original was 'buy', otherwise 'buy').
+    :param buy_sell: Original perspective from the system (e.g. ``"buy"`` or ``"sell"``).
+    :returns: Inverted perspective (``"sell"`` if original was ``"buy"``, otherwise ``"buy"``).
     """
     side = buy_sell.lower().strip()
     if side == "buy":
@@ -61,12 +60,11 @@ def prepare_client_side(buy_sell: str) -> str:
 
 
 def event_driven_notification(trade_data: Dict[str, Any]) -> None:
-    """
-    Main function to handle the notification event.
-    It inverts buy/sell, renders the email template, and sends the email.
+    """Handle the notification event.
 
-    Args:
-        trade_data (Dict[str, Any]): Dictionary containing trade details.
+    Inverts buy/sell, renders the email template, and sends the email.
+
+    :param trade_data: Dictionary containing trade details.
     """
     # 1. Invert perspective for the client
     trade_data["client_side"] = prepare_client_side(trade_data.get("buy_sell", "unknown"))
@@ -79,8 +77,7 @@ def event_driven_notification(trade_data: Dict[str, Any]) -> None:
     # 3. Set up Jinja2 environment (point to your template folder)
     template_dir = config["NOTIFICATION_TEMPLATE_DIR"]
     env = jinja2.Environment(
-        loader=jinja2.FileSystemLoader(template_dir),
-        autoescape=jinja2.select_autoescape(["html", "xml"])
+        loader=jinja2.FileSystemLoader(template_dir), autoescape=jinja2.select_autoescape(["html", "xml"])
     )
 
     # 4. Load fixed-float swap email template

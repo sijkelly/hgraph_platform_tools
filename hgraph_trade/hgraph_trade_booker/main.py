@@ -31,14 +31,14 @@ from trade_loader import load_trade_from_file
 from trade_mapper import map_trade_to_model
 from trade_booker import book_trades_batch
 
+__all__ = ("main",)
+
 logger = logging.getLogger(__name__)
 
 
 def _parse_args() -> argparse.Namespace:
     """Parse command-line arguments."""
-    parser = argparse.ArgumentParser(
-        description="Process and book trades using specified input and output paths."
-    )
+    parser = argparse.ArgumentParser(description="Process and book trades using specified input and output paths.")
     parser.add_argument(
         "--input_file",
         type=str,
@@ -47,8 +47,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--input_dir",
         type=str,
-        help="Directory containing trade files to process (*.json, *.txt). "
-             "Mutually exclusive with --input_file.",
+        help="Directory containing trade files to process (*.json, *.txt). " "Mutually exclusive with --input_file.",
     )
     parser.add_argument(
         "--output_dir",
@@ -79,10 +78,7 @@ def _collect_input_files(args: argparse.Namespace) -> list[str]:
         return [args.input_file]
 
     if args.input_dir:
-        files = sorted(
-            glob.glob(f"{args.input_dir}/*.json")
-            + glob.glob(f"{args.input_dir}/*.txt")
-        )
+        files = sorted(glob.glob(f"{args.input_dir}/*.json") + glob.glob(f"{args.input_dir}/*.txt"))
         if not files:
             logger.error("No trade files found in %s", args.input_dir)
             sys.exit(2)
@@ -154,9 +150,11 @@ def main() -> None:
             pipeline.add(
                 TradeResult(
                     trade_id=str(trade_id),
-                    status=TradeStatus.VALIDATION_FAILED
-                    if "Missing" in str(exc) or "Unsupported" in str(exc)
-                    else TradeStatus.MAPPING_FAILED,
+                    status=(
+                        TradeStatus.VALIDATION_FAILED
+                        if "Missing" in str(exc) or "Unsupported" in str(exc)
+                        else TradeStatus.MAPPING_FAILED
+                    ),
                     message=str(exc),
                     error=exc,
                     stage="validation" if "Missing" in str(exc) else "mapping",

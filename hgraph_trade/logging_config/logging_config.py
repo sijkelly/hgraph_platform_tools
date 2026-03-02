@@ -18,6 +18,7 @@ import logging.config
 import os
 from typing import Dict, Optional
 
+__all__ = ("setup_logging",)
 
 # Consistent format across the entire platform
 _DEFAULT_FORMAT = "%(asctime)s [%(levelname)s] %(name)s — %(message)s"

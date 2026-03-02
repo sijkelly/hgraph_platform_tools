@@ -18,20 +18,27 @@ import requests
 
 from secure_config import config
 
+__all__ = (
+    "init_db",
+    "fetch_static_data",
+    "process_counterparty_data",
+    "store_counterparty_data",
+    "run_pipeline",
+    "parse_cli_args",
+    "main",
+)
+
 logger = logging.getLogger(__name__)
 
 
 def init_db(db_path: str) -> None:
-    """
-    Initialize the SQLite database with the required static tables.
+    """Initialise the SQLite database with the required static tables.
 
-    Args:
-        db_path (str): Path to the SQLite database file.
+    :param db_path: Path to the SQLite database file.
     """
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
-    cursor.execute(
-        """
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS counterparties (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             legal_name TEXT NOT NULL,
@@ -45,21 +52,16 @@ def init_db(db_path: str) -> None:
             notification_preferences TEXT,
             notification_contacts TEXT
         )
-        """
-    )
+        """)
     conn.commit()
     conn.close()
 
 
 def fetch_static_data(api_url: str) -> List[Dict[str, Any]]:
-    """
-    Fetch static data from an external API.
+    """Fetch static data from an external API.
 
-    Args:
-        api_url (str): The URL of the API endpoint.
-
-    Returns:
-        List[Dict[str, Any]]: List of raw static data dictionaries.
+    :param api_url: The URL of the API endpoint.
+    :returns: List of raw static data dictionaries.
     """
     response = requests.get(api_url)
     response.raise_for_status()
@@ -67,18 +69,14 @@ def fetch_static_data(api_url: str) -> List[Dict[str, Any]]:
 
 
 def process_counterparty_data(raw_data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """
-    Process and validate counterparty static data.
+    """Process and validate counterparty static data.
 
-    This function cleans the data, applying regex where needed (e.g., to remove
-    any invalid characters from identifiers), and maps external field names
-    to the internal schema.
+    Cleans the data, applying regex where needed (e.g. to remove invalid
+    characters from identifiers), and maps external field names to the
+    internal schema.
 
-    Args:
-        raw_data (List[Dict[str, Any]]): Raw data fetched from the API.
-
-    Returns:
-        List[Dict[str, Any]]: Processed counterparty data.
+    :param raw_data: Raw data fetched from the API.
+    :returns: Processed counterparty data.
     """
     processed = []
     for entry in raw_data:
@@ -92,28 +90,28 @@ def process_counterparty_data(raw_data: List[Dict[str, Any]]) -> List[Dict[str, 
         dropcopy_enabled = entry.get("Dropcopy Enabled", "N")
         notification_preferences = entry.get("Notification Preferences", "")
         notification_contacts = entry.get("Notification Contacts", "")
-        processed.append({
-            "legal_name": legal_name,
-            "short_name": short_name,
-            "identifier1": identifier1,
-            "identifier2": identifier2,
-            "identifier3": identifier3,
-            "identifier4": identifier4,
-            "cleared_otc": cleared_otc,
-            "dropcopy_enabled": dropcopy_enabled,
-            "notification_preferences": notification_preferences,
-            "notification_contacts": notification_contacts
-        })
+        processed.append(
+            {
+                "legal_name": legal_name,
+                "short_name": short_name,
+                "identifier1": identifier1,
+                "identifier2": identifier2,
+                "identifier3": identifier3,
+                "identifier4": identifier4,
+                "cleared_otc": cleared_otc,
+                "dropcopy_enabled": dropcopy_enabled,
+                "notification_preferences": notification_preferences,
+                "notification_contacts": notification_contacts,
+            }
+        )
     return processed
 
 
 def store_counterparty_data(db_path: str, data: List[Dict[str, Any]]) -> None:
-    """
-    Store processed counterparty data into the SQLite database.
+    """Store processed counterparty data into the SQLite database.
 
-    Args:
-        db_path (str): Path to the SQLite database file.
-        data (List[Dict[str, Any]]): Processed counterparty data.
+    :param db_path: Path to the SQLite database file.
+    :param data: Processed counterparty data.
     """
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
@@ -136,20 +134,18 @@ def store_counterparty_data(db_path: str, data: List[Dict[str, Any]]) -> None:
                 entry["cleared_otc"],
                 entry["dropcopy_enabled"],
                 entry["notification_preferences"],
-                entry["notification_contacts"]
-            )
+                entry["notification_contacts"],
+            ),
         )
     conn.commit()
     conn.close()
 
 
 def run_pipeline(api_url: str, db_path: str) -> None:
-    """
-    Run the forward propagation graph pipeline to fetch, process, and store static data.
+    """Run the FPG pipeline to fetch, process, and store static data.
 
-    Args:
-        api_url (str): API URL to fetch static data.
-        db_path (str): Path to the SQLite database.
+    :param api_url: API URL to fetch static data.
+    :param db_path: Path to the SQLite database.
     """
     # Stage 1: Fetch
     raw_data = fetch_static_data(api_url)
@@ -161,19 +157,13 @@ def run_pipeline(api_url: str, db_path: str) -> None:
 
 
 def parse_cli_args() -> argparse.Namespace:
-    """
-    Parse command line arguments for the static data admin module.
+    """Parse command line arguments for the static data admin module.
 
-    Returns:
-        argparse.Namespace: Parsed arguments.
+    :returns: Parsed arguments.
     """
     parser = argparse.ArgumentParser(description="hgraph Static Data Admin Module")
-    parser.add_argument(
-        "--init-db", action="store_true", help="Initialize the database schema"
-    )
-    parser.add_argument(
-        "--fetch", action="store_true", help="Fetch and update static data"
-    )
+    parser.add_argument("--init-db", action="store_true", help="Initialize the database schema")
+    parser.add_argument("--fetch", action="store_true", help="Fetch and update static data")
     parser.add_argument(
         "--db-path",
         type=str,

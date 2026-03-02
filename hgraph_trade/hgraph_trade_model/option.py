@@ -10,7 +10,10 @@ Bermudan) and calculates premiums if they are not explicitly provided.
 from typing import Dict, Any
 from hgraph_trade.hgraph_trade_mapping.fpml_mappings import get_global_mapping, get_instrument_mapping
 
+__all__ = ("create_commodity_option",)
+
 exercise_styles = ["European", "American", "Bermudan"]
+
 
 def map_hgraph_to_fpml(trade_data: Dict[str, Any], mapping: Dict[str, str]) -> Dict[str, Any]:
     mapped_data = {}
@@ -19,6 +22,7 @@ def map_hgraph_to_fpml(trade_data: Dict[str, Any], mapping: Dict[str, str]) -> D
         mapped_data[fpml_key] = value
     return mapped_data
 
+
 def create_commodity_option(trade_data: Dict[str, Any]) -> list:
     global_mapping = get_global_mapping()
     option_mapping = get_instrument_mapping("option")
@@ -26,14 +30,11 @@ def create_commodity_option(trade_data: Dict[str, Any]) -> list:
 
     fpml_data = map_hgraph_to_fpml(trade_data, combined_mapping)
 
-    total_premium = fpml_data.get("totalPremium") or (
-        fpml_data.get("premiumPerUnit", 0) * fpml_data.get("quantity", 0)
-    )
+    total_premium = fpml_data.get("totalPremium") or (fpml_data.get("premiumPerUnit", 0) * fpml_data.get("quantity", 0))
 
     if fpml_data.get("exerciseStyle") not in exercise_styles:
         raise ValueError(
-            f"Invalid exercise style: {fpml_data.get('exerciseStyle')}. "
-            f"Expected one of {exercise_styles}."
+            f"Invalid exercise style: {fpml_data.get('exerciseStyle')}. " f"Expected one of {exercise_styles}."
         )
 
     option = {
@@ -41,25 +42,23 @@ def create_commodity_option(trade_data: Dict[str, Any]) -> list:
         "effectiveDate": fpml_data.get("effectiveDate", ""),
         "expirationDate": fpml_data.get("expirationDate", ""),
         "underlyer": fpml_data.get("underlyer", ""),
-        "notionalQuantity": {
-            "quantity": fpml_data.get("quantity", ""),
-            "unit": fpml_data.get("unit", "")
-        },
+        "notionalQuantity": {"quantity": fpml_data.get("quantity", ""), "unit": fpml_data.get("unit", "")},
         "paymentCurrency": fpml_data.get("paymentCurrency", ""),
         "priceUnit": fpml_data.get("priceUnit", ""),
         "strikePrice": fpml_data.get("strikePrice", ""),
         "premium": {
             "premiumPaymentDate": fpml_data.get("premiumPaymentDate", ""),
             "premiumPerUnit": fpml_data.get("premiumPerUnit", ""),
-            "totalPremium": total_premium
+            "totalPremium": total_premium,
         },
-        "exerciseStyle": fpml_data.get("exerciseStyle", "")
+        "exerciseStyle": fpml_data.get("exerciseStyle", ""),
     }
 
     if fpml_data.get("exerciseStyle") == "Bermudan":
         option["exerciseDates"] = fpml_data.get("exerciseDates", [])
 
     return [{"commodityOption": option}]
+
 
 # Example usage (commented out for production; move to tests or examples)
 # if __name__ == "__main__":

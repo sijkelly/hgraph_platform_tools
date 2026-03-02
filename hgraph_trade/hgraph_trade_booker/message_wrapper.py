@@ -14,6 +14,15 @@ import hashlib
 
 from secure_config import config
 
+__all__ = (
+    "create_message_header",
+    "create_message_footer",
+    "calculate_checksum",
+    "filter_trade_data",
+    "wrap_message_with_headers_and_footers",
+)
+
+
 def create_message_header(msg_type: str, sender: str, target: str) -> Dict[str, Any]:
     """
     Create a message header with metadata for routing and processing.
@@ -28,8 +37,9 @@ def create_message_header(msg_type: str, sender: str, target: str) -> Dict[str, 
         "senderCompID": sender,
         "targetCompID": target,
         "sendingTime": datetime.datetime.now(datetime.timezone.utc).isoformat() + "Z",
-        "messageVersion": config["MESSAGE_VERSION"]
+        "messageVersion": config["MESSAGE_VERSION"],
     }
+
 
 def create_message_footer() -> Dict[str, Any]:
     """
@@ -39,6 +49,7 @@ def create_message_footer() -> Dict[str, Any]:
     """
     return {"checksum": None}
 
+
 def calculate_checksum(message: str) -> str:
     """
     Calculate a simple checksum for the message.
@@ -47,6 +58,7 @@ def calculate_checksum(message: str) -> str:
     :return: The calculated SHA-256 checksum.
     """
     return hashlib.sha256(message.encode("utf-8")).hexdigest()
+
 
 def filter_trade_data(trade_data: Dict[str, Any]) -> Dict[str, Any]:
     """
@@ -58,11 +70,9 @@ def filter_trade_data(trade_data: Dict[str, Any]) -> Dict[str, Any]:
     allowed_keys = {"tradeHeader", "tradeEconomics", "tradeFooter"}
     return {key: value for key, value in trade_data.items() if key in allowed_keys}
 
+
 def wrap_message_with_headers_and_footers(
-    trade_data: Dict[str, Any],
-    msg_type: str,
-    sender: str,
-    target: str
+    trade_data: Dict[str, Any], msg_type: str, sender: str, target: str
 ) -> Dict[str, Any]:
     """
     Wrap trade data with message header and footer.
@@ -91,6 +101,7 @@ def wrap_message_with_headers_and_footers(
     message["messageFooter"]["checksum"] = calculate_checksum(serialized_message)
 
     return message
+
 
 # Example usage (Commented out to avoid running in production)
 # if __name__ == "__main__":

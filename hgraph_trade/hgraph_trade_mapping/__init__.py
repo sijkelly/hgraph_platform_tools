@@ -13,13 +13,6 @@ from .fpml_mappings import (
     get_instrument_mapping,
     map_hgraph_to_fpml,
 )
-from .instrument_mappings import (
-    map_pricing_instrument
-)
+from .instrument_mappings import map_pricing_instrument
 
-__all__ = [
-    "get_global_mapping",
-    "get_instrument_mapping",
-    "map_hgraph_to_fpml",
-    "map_pricing_instrument"
-]
+__all__ = ("get_global_mapping", "get_instrument_mapping", "map_hgraph_to_fpml", "map_pricing_instrument")

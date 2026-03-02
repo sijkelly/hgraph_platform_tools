@@ -1,13 +1,10 @@
-"""
-Shared test fixtures for hgraph_platform_tools test suite.
-"""
+"""Shared test fixtures for hgraph_platform_tools test suite."""
 
 import pytest
 
 
 @pytest.fixture
 def base_trade_data():
-    """Base trade data common to all instrument types."""
     return {
         "trade_id": "TEST-001",
         "trade_date": "2024-11-20",
@@ -25,24 +22,14 @@ def base_trade_data():
         "external_trader": "TraderY",
         "tradeType": "newTrade",
         "instrument": "outright",
-        "counterparty": {
-            "internal": "InternalCo",
-            "external": "ExternalCo"
-        },
-        "portfolio": {
-            "internal": "PortfolioA",
-            "external": "PortfolioB"
-        },
-        "traders": {
-            "internal": "TraderX",
-            "external": "TraderY"
-        },
+        "counterparty": {"internal": "InternalCo", "external": "ExternalCo"},
+        "portfolio": {"internal": "PortfolioA", "external": "PortfolioB"},
+        "traders": {"internal": "TraderX", "external": "TraderY"},
     }
 
 
 @pytest.fixture
 def swap_fixed_float_data(base_trade_data):
-    """Trade data for a fixed/float commodity swap."""
     return {
         **base_trade_data,
         "instrument": "outright",
@@ -67,7 +54,6 @@ def swap_fixed_float_data(base_trade_data):
 
 @pytest.fixture
 def swap_float_float_data(base_trade_data):
-    """Trade data for a float/float commodity swap."""
     return {
         **base_trade_data,
         "instrument": "crack_spread",
@@ -93,7 +79,6 @@ def swap_float_float_data(base_trade_data):
 
 @pytest.fixture
 def option_data(base_trade_data):
-    """Trade data for a commodity option."""
     return {
         **base_trade_data,
         "instrument": "option",
@@ -108,7 +93,6 @@ def option_data(base_trade_data):
 
 @pytest.fixture
 def forward_data(base_trade_data):
-    """Trade data for a commodity forward."""
     return {
         **base_trade_data,
         "instrument": "forward",
@@ -120,7 +104,6 @@ def forward_data(base_trade_data):
 
 @pytest.fixture
 def future_data(base_trade_data):
-    """Trade data for a commodity future."""
     return {
         **base_trade_data,
         "instrument": "future",
@@ -134,7 +117,6 @@ def future_data(base_trade_data):
 
 @pytest.fixture
 def fx_data(base_trade_data):
-    """Trade data for an FX trade."""
     return {
         **base_trade_data,
         "instrument": "fx",
@@ -147,7 +129,6 @@ def fx_data(base_trade_data):
 
 @pytest.fixture
 def swaption_data(base_trade_data):
-    """Trade data for a commodity swaption."""
     return {
         **base_trade_data,
         "instrument": "swaption",
@@ -178,7 +159,6 @@ def swaption_data(base_trade_data):
 
 @pytest.fixture
 def cash_data(base_trade_data):
-    """Trade data for a cash trade."""
     return {
         **base_trade_data,
         "instrument": "cash",
@@ -194,7 +174,6 @@ def cash_data(base_trade_data):
 
 @pytest.fixture
 def physical_gas_data(base_trade_data):
-    """Trade data for a gas physical trade."""
     return {
         **base_trade_data,
         "instrument": "physical",

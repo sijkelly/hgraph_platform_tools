@@ -1,33 +1,111 @@
-[tool.poetry]
+[project]
 name = "hgraph-platform-tools"
 version = "0.1.0"
-description = ""
-authors = ["Simon Kelly <si.j.kelly@gmail.com>"]
+description = "Platform tooling for the hgraph forward propagation graph framework. Provides trade booking, entitlements, static data admin, and notification pipelines."
 readme = "README.md"
-package-mode = false
+license = {text = "MIT"}
+authors = [
+    {name = "Simon Kelly", email = "si.j.kelly@gmail.com"},
+]
+requires-python = ">=3.12"
+dependencies = [
+    "hgraph>=0.5",
+    "pandas>=2.0",
+    "numpy>=1.23",
+    "python-dotenv>=1.0",
+    "xmlschema>=2.0",
+]
 
-[tool.poetry.dependencies]
-python = "^3.13"
-pandas = "*"
-numpy = "*"
-pymongo = "*"
-hgraph = "*"
-jinja2 = "*"
-requests = "*"
-kafka-python = "*"
-xmlschema = "*"
-python-dotenv = "*"
+[project.optional-dependencies]
+messaging = [
+    "kafka-python>=2.1.5",
+]
+notification = [
+    "jinja2>=3.1",
+]
+database = [
+    "pymongo>=4.0",
+]
+web = [
+    "requests>=2.28",
+]
+test = [
+    "pytest>=7.4",
+    "pytest-cov>=4.0",
+    "coverage>=7.0",
+    "mypy>=1.5",
+    "black>=25.1.0",
+]
+all = [
+    "hgraph-platform-tools[messaging,notification,database,web]",
+]
+dev = [
+    "hgraph-platform-tools[all,test]",
+]
 
-[tool.poetry.scripts]
-hgraph = "cli:main"
-
-[tool.poetry.group.dev.dependencies]
-pytest = "*"
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-pythonpath = ["."]
+[project.scripts]
+hgraph-tools = "cli:main"
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = [
+    "hgraph_trade",
+    "hgraph_entitlements",
+    "hgraph_notification",
+    "hgraph_static_admin",
+]
+
+# ---------- pytest ----------
+[tool.pytest.ini_options]
+minversion = "7.4"
+pythonpath = ["."]
+testpaths = ["tests"]
+markers = [
+    "smoke: Smoke tests for basic checkout",
+    "serial: Tests that must run serially",
+]
+
+# ---------- coverage ----------
+[tool.coverage.run]
+source_pkgs = [
+    "hgraph_trade",
+    "hgraph_entitlements",
+    "hgraph_notification",
+    "hgraph_static_admin",
+]
+branch = true
+parallel = true
+omit = [
+    "tests/*",
+    "venv/*",
+    ".venv/*",
+]
+
+[tool.coverage.report]
+fail_under = 55
+exclude_lines = [
+    "no cov",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
+
+# ---------- black ----------
+[tool.black]
+line-length = 120
+target-version = ["py312"]
+include = '\.pyi?$'
+extend-exclude = '''
+(
+  fpml_tag_dict_structure\.py
+  | fpml_tags\.py
+  | output_fpml_tags\.py
+)
+'''
+
+# ---------- mypy ----------
+[tool.mypy]
+files = ["."]
+ignore_missing_imports = true
