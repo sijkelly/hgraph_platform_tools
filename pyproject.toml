@@ -29,6 +29,9 @@ database = [
 web = [
     "requests>=2.28",
 ]
+oap = [
+    "hg-oap>=0.1",
+]
 test = [
     "pytest>=7.4",
     "pytest-cov>=4.0",
@@ -37,7 +40,7 @@ test = [
     "black>=25.1.0",
 ]
 all = [
-    "hgraph-platform-tools[messaging,notification,database,web]",
+    "hgraph-platform-tools[messaging,notification,database,web,oap]",
 ]
 dev = [
     "hgraph-platform-tools[all,test]",
@@ -56,12 +59,13 @@ packages = [
     "hgraph_entitlements",
     "hgraph_notification",
     "hgraph_static_admin",
+    "hgraph_oap_adapter",
 ]
 
 # ---------- pytest ----------
 [tool.pytest.ini_options]
 minversion = "7.4"
-pythonpath = ["."]
+pythonpath = [".", "../hg_oap/src"]
 testpaths = ["tests"]
 markers = [
     "smoke: Smoke tests for basic checkout",
@@ -75,6 +79,7 @@ source_pkgs = [
     "hgraph_entitlements",
     "hgraph_notification",
     "hgraph_static_admin",
+    "hgraph_oap_adapter",
 ]
 branch = true
 parallel = true

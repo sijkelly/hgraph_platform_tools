@@ -46,6 +46,15 @@ def load_secure_config() -> Dict[str, str]:
         "STATIC_DATA_API_URL": os.getenv("STATIC_DATA_API_URL", "http://localhost:8080/api/counterparties"),
         # --- Kafka ---
         "KAFKA_BOOTSTRAP_SERVERS": os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"),
+        "KAFKA_CONSUMER_GROUP": os.getenv("KAFKA_CONSUMER_GROUP", "hgraph_platform"),
+        # --- Party Kafka Subscriber ---
+        "PARTY_KAFKA_ENTITY_TOPIC": os.getenv("PARTY_KAFKA_ENTITY_TOPIC", "party.legal_entity"),
+        "PARTY_KAFKA_RELATIONSHIP_TOPIC": os.getenv("PARTY_KAFKA_RELATIONSHIP_TOPIC", "party.trading_relationship"),
+        "PARTY_DB_PATH": os.getenv("PARTY_DB_PATH", "party_data.db"),
+        # --- Portfolio Kafka Subscriber ---
+        "PORTFOLIO_KAFKA_PORTFOLIO_TOPIC": os.getenv("PORTFOLIO_KAFKA_PORTFOLIO_TOPIC", "portfolio.portfolio"),
+        "PORTFOLIO_KAFKA_BOOK_TOPIC": os.getenv("PORTFOLIO_KAFKA_BOOK_TOPIC", "portfolio.book"),
+        "PORTFOLIO_DB_PATH": os.getenv("PORTFOLIO_DB_PATH", "portfolio_data.db"),
         # --- Trade messaging ---
         "MESSAGE_SENDER_ID": os.getenv("MESSAGE_SENDER_ID", "hgraph_platform"),
         "MESSAGE_TARGET_ID": os.getenv("MESSAGE_TARGET_ID", "booking_system"),

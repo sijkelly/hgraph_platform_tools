@@ -10,6 +10,10 @@ Provides a single entry point with subcommands for every module:
     python cli.py static-admin --init-db --db-path static_data.db
     python cli.py notify   --file trade.json
     python cli.py parse-xsd --xsd path/to/file.xsd
+    python cli.py party-subscribe --db-path party_data.db
+    python cli.py party-subscribe --init-db --db-path party_data.db
+    python cli.py portfolio-subscribe --db-path portfolio_data.db
+    python cli.py portfolio-subscribe --init-db --db-path portfolio_data.db
 
 Can also be installed as a console script via pyproject.toml.
 """
@@ -246,6 +250,96 @@ def _run_parse_xsd(args: argparse.Namespace) -> int:
 
 
 # ---------------------------------------------------------------------------
+# Subcommand: party-subscribe
+# ---------------------------------------------------------------------------
+def _add_party_subscribe_parser(subparsers: argparse._SubParsersAction) -> None:
+    p = subparsers.add_parser("party-subscribe", help="Subscribe to party data via Kafka")
+    p.add_argument("--init-db", action="store_true", help="Initialise the party database schema")
+    p.add_argument("--db-path", type=str, default=None, help="Path to the party SQLite database")
+    p.add_argument("--bootstrap-servers", type=str, default=None, help="Kafka bootstrap servers")
+    p.add_argument("--group-id", type=str, default=None, help="Kafka consumer group")
+    p.add_argument("--entity-topic", type=str, default=None, help="Topic for legal entity messages")
+    p.add_argument("--relationship-topic", type=str, default=None, help="Topic for trading relationship messages")
+    p.set_defaults(func=_run_party_subscribe)
+
+
+def _run_party_subscribe(args: argparse.Namespace) -> int:
+    from secure_config import config
+    from hgraph_static_admin.party_store import init_party_db
+
+    db_path = args.db_path or config["PARTY_DB_PATH"]
+
+    if args.init_db:
+        init_party_db(db_path)
+        logger.info("Party database initialised at %s", db_path)
+        if not args.bootstrap_servers:
+            return 0  # Just init, don't start subscriber
+
+    from hgraph_static_admin.party_kafka_subscriber import PartyKafkaSubscriber
+
+    subscriber = PartyKafkaSubscriber(
+        db_path,
+        bootstrap_servers=args.bootstrap_servers,
+        group_id=args.group_id,
+        entity_topic=args.entity_topic,
+        relationship_topic=args.relationship_topic,
+    )
+    try:
+        logger.info("Starting party Kafka subscriber...")
+        subscriber.start()
+    except KeyboardInterrupt:
+        logger.info("Interrupted by user")
+    finally:
+        subscriber.close()
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# Subcommand: portfolio-subscribe
+# ---------------------------------------------------------------------------
+def _add_portfolio_subscribe_parser(subparsers: argparse._SubParsersAction) -> None:
+    p = subparsers.add_parser("portfolio-subscribe", help="Subscribe to portfolio data via Kafka")
+    p.add_argument("--init-db", action="store_true", help="Initialise the portfolio database schema")
+    p.add_argument("--db-path", type=str, default=None, help="Path to the portfolio SQLite database")
+    p.add_argument("--bootstrap-servers", type=str, default=None, help="Kafka bootstrap servers")
+    p.add_argument("--group-id", type=str, default=None, help="Kafka consumer group")
+    p.add_argument("--portfolio-topic", type=str, default=None, help="Topic for portfolio messages")
+    p.add_argument("--book-topic", type=str, default=None, help="Topic for book messages")
+    p.set_defaults(func=_run_portfolio_subscribe)
+
+
+def _run_portfolio_subscribe(args: argparse.Namespace) -> int:
+    from secure_config import config
+    from hgraph_static_admin.portfolio_store import init_portfolio_db
+
+    db_path = args.db_path or config["PORTFOLIO_DB_PATH"]
+
+    if args.init_db:
+        init_portfolio_db(db_path)
+        logger.info("Portfolio database initialised at %s", db_path)
+        if not args.bootstrap_servers:
+            return 0  # Just init, don't start subscriber
+
+    from hgraph_static_admin.portfolio_kafka_subscriber import PortfolioKafkaSubscriber
+
+    subscriber = PortfolioKafkaSubscriber(
+        db_path,
+        bootstrap_servers=args.bootstrap_servers,
+        group_id=args.group_id,
+        portfolio_topic=args.portfolio_topic,
+        book_topic=args.book_topic,
+    )
+    try:
+        logger.info("Starting portfolio Kafka subscriber...")
+        subscriber.start()
+    except KeyboardInterrupt:
+        logger.info("Interrupted by user")
+    finally:
+        subscriber.close()
+    return 0
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 def main() -> None:
@@ -266,6 +360,8 @@ def main() -> None:
     _add_static_admin_parser(subparsers)
     _add_notify_parser(subparsers)
     _add_parse_xsd_parser(subparsers)
+    _add_party_subscribe_parser(subparsers)
+    _add_portfolio_subscribe_parser(subparsers)
 
     args = parser.parse_args()
 
