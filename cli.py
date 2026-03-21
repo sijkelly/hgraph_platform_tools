@@ -340,6 +340,49 @@ def _run_portfolio_subscribe(args: argparse.Namespace) -> int:
 
 
 # ---------------------------------------------------------------------------
+# Subcommand: ev-rate-subscribe
+# ---------------------------------------------------------------------------
+def _add_ev_rate_subscribe_parser(subparsers: argparse._SubParsersAction) -> None:
+    p = subparsers.add_parser("ev-rate-subscribe", help="Subscribe to EV rate updates via Kafka")
+    p.add_argument("--init-db", action="store_true", help="Initialise the EV rate database schema")
+    p.add_argument("--db-path", type=str, default=None, help="Path to the EV rate SQLite database")
+    p.add_argument("--bootstrap-servers", type=str, default=None, help="Kafka bootstrap servers")
+    p.add_argument("--group-id", type=str, default=None, help="Kafka consumer group")
+    p.add_argument("--topic", type=str, default=None, help="Kafka topic for EV rate messages")
+    p.set_defaults(func=_run_ev_rate_subscribe)
+
+
+def _run_ev_rate_subscribe(args: argparse.Namespace) -> int:
+    from secure_config import config
+    from hgraph_oap_adapter.ev_rate_store import init_ev_rate_db
+
+    db_path = args.db_path or config["EV_RATE_DB_PATH"]
+
+    if args.init_db:
+        init_ev_rate_db(db_path)
+        logger.info("EV rate database initialised at %s", db_path)
+        if not args.bootstrap_servers:
+            return 0  # Just init, don't start subscriber
+
+    from hgraph_oap_adapter.ev_rate_kafka_subscriber import EVRateKafkaSubscriber
+
+    subscriber = EVRateKafkaSubscriber(
+        db_path,
+        bootstrap_servers=args.bootstrap_servers,
+        group_id=args.group_id,
+        ev_rate_topic=args.topic,
+    )
+    try:
+        logger.info("Starting EV rate Kafka subscriber...")
+        subscriber.start()
+    except KeyboardInterrupt:
+        logger.info("Interrupted by user")
+    finally:
+        subscriber.close()
+    return 0
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 def main() -> None:
@@ -362,6 +405,7 @@ def main() -> None:
     _add_parse_xsd_parser(subparsers)
     _add_party_subscribe_parser(subparsers)
     _add_portfolio_subscribe_parser(subparsers)
+    _add_ev_rate_subscribe_parser(subparsers)
 
     args = parser.parse_args()
 
