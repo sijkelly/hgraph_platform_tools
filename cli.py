@@ -14,6 +14,8 @@ Provides a single entry point with subcommands for every module:
     python cli.py party-subscribe --init-db --db-path party_data.db
     python cli.py portfolio-subscribe --db-path portfolio_data.db
     python cli.py portfolio-subscribe --init-db --db-path portfolio_data.db
+    python cli.py credit-subscribe --db-path credit_data.db
+    python cli.py credit-subscribe --init-db --db-path credit_data.db
 
 Can also be installed as a console script via pyproject.toml.
 """
@@ -340,6 +342,87 @@ def _run_portfolio_subscribe(args: argparse.Namespace) -> int:
 
 
 # ---------------------------------------------------------------------------
+# Subcommand: credit-subscribe
+# ---------------------------------------------------------------------------
+def _add_credit_subscribe_parser(subparsers: argparse._SubParsersAction) -> None:
+    p = subparsers.add_parser("credit-subscribe", help="Subscribe to credit data via Kafka")
+    p.add_argument("--init-db", action="store_true", help="Initialise the credit database schema")
+    p.add_argument("--db-path", type=str, default=None, help="Path to the credit SQLite database")
+    p.add_argument("--bootstrap-servers", type=str, default=None, help="Kafka bootstrap servers")
+    p.add_argument("--group-id", type=str, default=None, help="Kafka consumer group")
+    p.add_argument("--limit-topic", type=str, default=None, help="Topic for credit limit messages")
+    p.add_argument("--utilization-topic", type=str, default=None, help="Topic for credit utilization messages")
+    p.set_defaults(func=_run_credit_subscribe)
+
+
+def _run_credit_subscribe(args: argparse.Namespace) -> int:
+    from secure_config import config
+    from hgraph_static_admin.credit_store import init_credit_db
+
+    db_path = args.db_path or config["CREDIT_DB_PATH"]
+
+    if args.init_db:
+        init_credit_db(db_path)
+        logger.info("Credit database initialised at %s", db_path)
+        if not args.bootstrap_servers:
+            return 0  # Just init, don't start subscriber
+
+    from hgraph_static_admin.credit_kafka_subscriber import CreditKafkaSubscriber
+
+    subscriber = CreditKafkaSubscriber(
+        db_path,
+        bootstrap_servers=args.bootstrap_servers,
+        group_id=args.group_id,
+        limit_topic=args.limit_topic,
+        utilization_topic=args.utilization_topic,
+    )
+    try:
+        logger.info("Starting credit Kafka subscriber...")
+        subscriber.start()
+    except KeyboardInterrupt:
+        logger.info("Interrupted by user")
+    finally:
+        subscriber.close()
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# Subcommand: serve
+# ---------------------------------------------------------------------------
+def _add_serve_parser(subparsers: argparse._SubParsersAction) -> None:
+    p = subparsers.add_parser("serve", help="Start the OMS API server")
+    p.add_argument("--host", type=str, default=None, help="Bind host (default: 0.0.0.0)")
+    p.add_argument("--port", type=int, default=None, help="Bind port (default: 8000)")
+    p.add_argument("--db-dir", type=str, default=None, help="Directory containing SQLite databases")
+    p.add_argument("--reload", action="store_true", help="Enable auto-reload for development")
+    p.set_defaults(func=_run_serve)
+
+
+def _run_serve(args: argparse.Namespace) -> int:
+    import os
+
+    import uvicorn
+
+    from hgraph_api.config import api_config
+
+    host = args.host or api_config["API_HOST"]
+    port = args.port or int(api_config["API_PORT"])
+
+    if args.db_dir:
+        os.environ["API_DB_DIR"] = args.db_dir
+
+    logger.info("Starting OMS API server on %s:%d", host, port)
+    uvicorn.run(
+        "hgraph_api.app:create_app",
+        factory=True,
+        host=host,
+        port=port,
+        reload=args.reload,
+    )
+    return 0
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 def main() -> None:
@@ -362,6 +445,8 @@ def main() -> None:
     _add_parse_xsd_parser(subparsers)
     _add_party_subscribe_parser(subparsers)
     _add_portfolio_subscribe_parser(subparsers)
+    _add_credit_subscribe_parser(subparsers)
+    _add_serve_parser(subparsers)
 
     args = parser.parse_args()
 

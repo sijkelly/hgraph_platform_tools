@@ -97,6 +97,7 @@ def init_portfolio_db(db_path: str) -> None:
     """
     conn = sqlite3.connect(db_path)
     try:
+        conn.execute("PRAGMA journal_mode = WAL")
         conn.execute("PRAGMA foreign_keys = ON")
         conn.execute(_CREATE_PORTFOLIOS_SQL)
         conn.execute(_CREATE_BOOKS_SQL)

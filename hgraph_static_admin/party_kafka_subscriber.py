@@ -69,6 +69,10 @@ __all__ = (
 
 logger = logging.getLogger(__name__)
 
+# Stop the subscriber after this many consecutive processing failures
+# to avoid infinite error loops on persistently bad data.
+_MAX_CONSECUTIVE_ERRORS = 50
+
 # Reverse lookup: classification string value → enum member
 _CLASSIFICATION_MAP: Dict[str, PartyClassification] = {c.value: c for c in PartyClassification}
 
@@ -139,7 +143,10 @@ def _parse_agreement(data: Dict[str, Any] | None, agreement_type: MasterAgreemen
     if "credit_support_annex" in data:
         kwargs["credit_support_annex"] = bool(data["credit_support_annex"])
     if "threshold_amount" in data and data["threshold_amount"] is not None:
-        kwargs["threshold_amount"] = float(data["threshold_amount"])
+        try:
+            kwargs["threshold_amount"] = float(data["threshold_amount"])
+        except (TypeError, ValueError):
+            raise ValueError(f"threshold_amount must be numeric, got: {type(data['threshold_amount']).__name__}")
     if "governing_law" in data:
         kwargs["governing_law"] = data["governing_law"]
 
@@ -272,6 +279,7 @@ class PartyKafkaSubscriber:
             self.group_id,
         )
 
+        consecutive_errors = 0
         try:
             while self._running:
                 records = self._receiver.poll(timeout_ms=poll_interval_ms)
@@ -281,13 +289,22 @@ class PartyKafkaSubscriber:
                     try:
                         self.process_message(topic, value)
                         self._processed_count += 1
+                        consecutive_errors = 0
                     except Exception as exc:
+                        consecutive_errors += 1
                         logger.error(
-                            "Error processing message on topic %s: %s — message: %s",
+                            "Error processing message on topic %s: %s — symbol: %s",
                             topic,
                             exc,
-                            value,
+                            value.get("symbol", "unknown") if isinstance(value, dict) else "unknown",
                         )
+                        if consecutive_errors >= _MAX_CONSECUTIVE_ERRORS:
+                            logger.critical(
+                                "Too many consecutive errors (%d), stopping party subscriber",
+                                consecutive_errors,
+                            )
+                            self._running = False
+                            break
 
                 if records:
                     self._receiver.commit()
