@@ -15,6 +15,10 @@ Usage::
         legal_entity_to_counterparty_row,
         relationship_to_trade_parties,
     )
+    from hgraph_oap_adapter.ev_rate_kafka_subscriber import (
+        EVRateKafkaSubscriber,
+        parse_ev_rate_message,
+    )
 """
 
 __all__: tuple[str, ...] = ()
