@@ -58,6 +58,10 @@ def load_secure_config() -> Dict[str, str]:
         # --- EV Rate Kafka Subscriber ---
         "EV_RATE_KAFKA_TOPIC": os.getenv("EV_RATE_KAFKA_TOPIC", "oap.ev_rate"),
         "EV_RATE_DB_PATH": os.getenv("EV_RATE_DB_PATH", "ev_rate_data.db"),
+        # --- Credit Kafka Subscriber ---
+        "CREDIT_KAFKA_LIMIT_TOPIC": os.getenv("CREDIT_KAFKA_LIMIT_TOPIC", "credit.limit"),
+        "CREDIT_KAFKA_UTILIZATION_TOPIC": os.getenv("CREDIT_KAFKA_UTILIZATION_TOPIC", "credit.utilization"),
+        "CREDIT_DB_PATH": os.getenv("CREDIT_DB_PATH", "credit_data.db"),
         # --- Trade messaging ---
         "MESSAGE_SENDER_ID": os.getenv("MESSAGE_SENDER_ID", "hgraph_platform"),
         "MESSAGE_TARGET_ID": os.getenv("MESSAGE_TARGET_ID", "booking_system"),

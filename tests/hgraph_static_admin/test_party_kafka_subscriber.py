@@ -372,3 +372,21 @@ def test_multiple_entities_round_trip(db_path, subscriber):
     assert len(entities) == 3
     symbols = {e.symbol for e in entities}
     assert symbols == {"A", "B", "C"}
+
+
+# ---------------------------------------------------------------------------
+# Numeric validation
+# ---------------------------------------------------------------------------
+
+
+def test_parse_agreement_non_numeric_threshold(db_path, dealer, counterparty):
+    upsert_legal_entity(db_path, dealer)
+    upsert_legal_entity(db_path, counterparty)
+    msg = {
+        "action": "UPSERT",
+        "internal_party_symbol": "HGDEALER",
+        "external_party_symbol": "ACME",
+        "isda": {"version": "2002", "threshold_amount": "not_a_number"},
+    }
+    with pytest.raises(ValueError, match="threshold_amount must be numeric"):
+        parse_relationship_message(msg, db_path)

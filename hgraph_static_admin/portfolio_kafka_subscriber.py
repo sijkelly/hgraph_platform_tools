@@ -67,6 +67,10 @@ __all__ = (
 
 logger = logging.getLogger(__name__)
 
+# Stop the subscriber after this many consecutive processing failures
+# to avoid infinite error loops on persistently bad data.
+_MAX_CONSECUTIVE_ERRORS = 50
+
 # Reverse lookup: portfolio type string value → enum member
 _PORTFOLIO_TYPE_MAP: Dict[str, PortfolioType] = {t.value: t for t in PortfolioType}
 
@@ -252,6 +256,7 @@ class PortfolioKafkaSubscriber:
             self.group_id,
         )
 
+        consecutive_errors = 0
         try:
             while self._running:
                 records = self._receiver.poll(timeout_ms=poll_interval_ms)
@@ -261,13 +266,22 @@ class PortfolioKafkaSubscriber:
                     try:
                         self.process_message(topic, value)
                         self._processed_count += 1
+                        consecutive_errors = 0
                     except Exception as exc:
+                        consecutive_errors += 1
                         logger.error(
-                            "Error processing message on topic %s: %s — message: %s",
+                            "Error processing message on topic %s: %s — symbol: %s",
                             topic,
                             exc,
-                            value,
+                            value.get("symbol", "unknown") if isinstance(value, dict) else "unknown",
                         )
+                        if consecutive_errors >= _MAX_CONSECUTIVE_ERRORS:
+                            logger.critical(
+                                "Too many consecutive errors (%d), stopping portfolio subscriber",
+                                consecutive_errors,
+                            )
+                            self._running = False
+                            break
 
                 if records:
                     self._receiver.commit()
