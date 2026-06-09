@@ -40,7 +40,6 @@ from hgraph_static_admin.portfolio_store import (
     upsert_portfolio,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -777,6 +776,92 @@ def test_create_order_credit_exceeded(client, seeded_credit_db):
     )
     assert r.status_code == 422
     assert "credit limit exceeded" in r.json()["detail"].lower()
+
+
+def test_create_order_exposure_breaches_limit(client, seeded_credit_db):
+    """An order whose quantity x price exceeds remaining credit should be rejected."""
+    # ACME: 15M utilized of 50M limit -> 35M available; 20M @ 2.0 = 40M exposure
+    r = client.post(
+        "/api/v1/orders",
+        json=_create_order_payload(counterparty="ACME", quantity="20000000", price="2.0"),
+    )
+    assert r.status_code == 422
+    assert "would breach credit limit" in r.json()["detail"].lower()
+
+
+def test_create_order_exposure_within_limit(client, seeded_credit_db):
+    """An order whose exposure fits within remaining credit should succeed."""
+    # ACME: 35M available; 1M @ 3.0 = 3M exposure
+    r = client.post(
+        "/api/v1/orders",
+        json=_create_order_payload(counterparty="ACME", quantity="1000000", price="3.0"),
+    )
+    assert r.status_code == 201
+
+
+def test_create_order_credit_store_unavailable(client, monkeypatch):
+    """If the credit store cannot be read, orders with a counterparty are rejected (fail closed)."""
+
+    def _boom(db_path, counterparty_symbol):
+        raise RuntimeError("disk I/O error")
+
+    monkeypatch.setattr("hgraph_static_admin.credit_store.get_credit_utilization", _boom)
+    r = client.post(
+        "/api/v1/orders",
+        json=_create_order_payload(counterparty="ACME"),
+    )
+    assert r.status_code == 503
+    assert "credit check unavailable" in r.json()["detail"].lower()
+
+
+def test_update_order_status_preserves_fill(client):
+    """A status-only PATCH must not wipe a previously recorded fill."""
+    create_r = client.post("/api/v1/orders", json=_create_order_payload())
+    order_id = create_r.json()["order_id"]
+
+    client.patch(
+        f"/api/v1/orders/{order_id}",
+        json={"status": "Partially Filled", "filled_quantity": "25000"},
+    )
+    r = client.patch(f"/api/v1/orders/{order_id}", json={"status": "Working"})
+    assert r.status_code == 200
+    assert r.json()["status"] == "Working"
+    assert r.json()["filled_quantity"] == "25000"
+
+
+# ---------------------------------------------------------------------------
+# Auth middleware fail-closed behaviour
+# ---------------------------------------------------------------------------
+
+
+def test_auth_denies_without_permission(db_dir, monkeypatch):
+    """With enforcement on, a user lacking the action permission gets 403."""
+    app = create_app()
+    app.state.db_dir = db_dir
+    app.state.enforce_entitlements = True
+    monkeypatch.setattr("hgraph_entitlements.checker.check_permission", lambda user_id, action, conn=None: False)
+
+    c = TestClient(app, headers={"X-User-Id": "test-user"})
+    r = c.post("/api/v1/orders", json=_create_order_payload())
+    assert r.status_code == 403
+    assert "lacks permission" in r.json()["detail"]
+
+
+def test_auth_fails_closed_on_checker_error(db_dir, monkeypatch):
+    """With enforcement on, an erroring entitlements checker denies the request (503)."""
+    app = create_app()
+    app.state.db_dir = db_dir
+    app.state.enforce_entitlements = True
+
+    def _boom(user_id, action, conn=None):
+        raise RuntimeError("entitlements db unavailable")
+
+    monkeypatch.setattr("hgraph_entitlements.checker.check_permission", _boom)
+
+    c = TestClient(app, headers={"X-User-Id": "test-user"})
+    r = c.post("/api/v1/orders", json=_create_order_payload())
+    assert r.status_code == 503
+    assert "request denied" in r.json()["detail"].lower()
 
 
 # ---------------------------------------------------------------------------

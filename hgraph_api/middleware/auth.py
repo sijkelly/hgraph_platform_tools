@@ -96,13 +96,20 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 if not allowed:
                     logger.warning(
                         "Permission denied: user=%s action=%s path=%s",
-                        user_id, action, path,
+                        user_id,
+                        action,
+                        path,
                     )
                     return JSONResponse(
                         status_code=403,
                         content={"detail": f"User '{user_id}' lacks permission '{action}'"},
                     )
             except Exception as exc:
-                logger.warning("Auth check failed for %s: %s (allowing)", user_id, exc)
+                # Fail closed: if the entitlements check errors, deny the action
+                logger.error("Auth check failed for %s action=%s: %s (denying)", user_id, action, exc)
+                return JSONResponse(
+                    status_code=503,
+                    content={"detail": "Entitlements check unavailable — request denied"},
+                )
 
         return await call_next(request)
