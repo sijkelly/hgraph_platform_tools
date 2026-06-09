@@ -61,10 +61,14 @@ class CreateOrderRequest(BaseModel):
 
 
 class UpdateOrderRequest(BaseModel):
-    """Request to update an order's status."""
+    """Request to update an order's status.
+
+    ``filled_quantity`` is only written when provided; omitting it
+    preserves the order's existing fill.
+    """
 
     status: str
-    filled_quantity: str = ""
+    filled_quantity: Optional[str] = None
 
 
 class OrderResponse(BaseModel):

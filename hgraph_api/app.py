@@ -5,6 +5,8 @@ Creates and configures the main FastAPI app with all routers, middleware,
 and CORS settings.  Call :func:`create_app` to get a ready-to-run instance.
 """
 
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -36,6 +38,10 @@ def create_app() -> FastAPI:
 
     # Store db_dir in app state so routers can access it
     app.state.db_dir = api_config["API_DB_DIR"]
+
+    # Entitlements enforcement on write endpoints (off by default for dev;
+    # when on, errors in the checker fail closed)
+    app.state.enforce_entitlements = os.getenv("API_ENFORCE_ENTITLEMENTS", "").lower() in ("1", "true", "yes")
 
     # Register routers
     app.include_router(health.router)

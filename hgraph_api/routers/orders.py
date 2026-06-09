@@ -77,7 +77,7 @@ def create_order(request_body: CreateOrderRequest, request: Request) -> OrderRes
 
     # Credit check — if counterparty is specified, verify available credit
     if request_body.counterparty:
-        credit_warning = _check_credit(request, request_body.counterparty, request_body.quantity)
+        credit_warning = _check_credit(request, request_body.counterparty, request_body.quantity, request_body.price)
         if credit_warning:
             raise HTTPException(status_code=422, detail=credit_warning)
 
@@ -150,23 +150,49 @@ def cancel_order_endpoint(order_id: str, request: Request) -> OrderResponse:
 # ---------------------------------------------------------------------------
 
 
-def _check_credit(request: Request, counterparty: str, quantity_str: str) -> str | None:
-    """Check if counterparty has sufficient credit. Returns warning message or None."""
+def _order_exposure(quantity_str: str, price_str: str) -> float | None:
+    """Estimate the order's notional exposure (quantity x price), or None if not computable."""
+    try:
+        quantity = float(quantity_str.replace(",", ""))
+        price = float(price_str.replace(",", ""))
+    except (ValueError, AttributeError):
+        return None  # Market orders or non-numeric input — no exposure estimate
+    if quantity <= 0 or price <= 0:
+        return None
+    return quantity * price
+
+
+def _check_credit(request: Request, counterparty: str, quantity_str: str, price_str: str) -> str | None:
+    """Check if counterparty has sufficient credit for this order.
+
+    Returns a rejection message, or None if the order may proceed.
+    Fails closed: if the credit store cannot be read, the order is rejected.
+    """
     try:
         from hgraph_static_admin.credit_store import get_credit_utilization
 
         credit_db = _credit_db_path(request)
         utilization = get_credit_utilization(credit_db, counterparty)
-        if utilization is None:
-            return None  # No credit data — allow (no limit configured)
-
-        if utilization.utilization_percentage >= 100:
-            return f"Credit limit exceeded for {counterparty}: {utilization.utilization_percentage:.1f}% utilized"
-
-        if utilization.utilization_percentage >= 90:
-            logger.warning(
-                "High credit utilization for %s: %.1f%%", counterparty, utilization.utilization_percentage
-            )
     except Exception as exc:
-        logger.warning("Credit check failed for %s: %s (allowing order)", counterparty, exc)
+        logger.error("Credit check failed for %s: %s (rejecting order)", counterparty, exc)
+        raise HTTPException(
+            status_code=503,
+            detail=f"Credit check unavailable for {counterparty} — order rejected",
+        )
+
+    if utilization is None:
+        return None  # No credit data — allow (no limit configured)
+
+    if utilization.utilization_percentage >= 100:
+        return f"Credit limit exceeded for {counterparty}: {utilization.utilization_percentage:.1f}% utilized"
+
+    exposure = _order_exposure(quantity_str, price_str)
+    if exposure is not None and utilization.utilized_amount + exposure > utilization.limit_amount:
+        return (
+            f"Order exposure {exposure:,.0f} would breach credit limit for {counterparty}: "
+            f"{utilization.utilized_amount:,.0f} of {utilization.limit_amount:,.0f} already utilized"
+        )
+
+    if utilization.utilization_percentage >= 90:
+        logger.warning("High credit utilization for %s: %.1f%%", counterparty, utilization.utilization_percentage)
     return None

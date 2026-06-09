@@ -93,8 +93,12 @@ def create_order(db_path: str, data: dict[str, Any], *, created_by: str = "") ->
                 order_id, instrument, side, quantity, unit, price,
                 counterparty, delivery_period, order_type, portfolio, book,
                 status, filled_quantity, created_at, updated_at, created_by
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            tuple(order.values()),
+            ) VALUES (
+                :order_id, :instrument, :side, :quantity, :unit, :price,
+                :counterparty, :delivery_period, :order_type, :portfolio, :book,
+                :status, :filled_quantity, :created_at, :updated_at, :created_by
+            )""",
+            order,
         )
         conn.commit()
     finally:
@@ -127,17 +131,27 @@ def get_all_orders(db_path: str, *, limit: int = 500) -> list[dict[str, Any]]:
 
 
 def update_order_status(
-    db_path: str, order_id: str, status: str, *, filled_quantity: str = ""
+    db_path: str, order_id: str, status: str, *, filled_quantity: str | None = None
 ) -> dict[str, Any] | None:
-    """Update the status (and optionally filled_quantity) of an order. Returns updated order or None."""
+    """Update the status (and optionally filled_quantity) of an order. Returns updated order or None.
+
+    ``filled_quantity`` is only written when provided; passing ``None``
+    preserves the existing value.
+    """
     now = datetime.now(timezone.utc).isoformat()
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     try:
-        conn.execute(
-            "UPDATE orders SET status = ?, filled_quantity = ?, updated_at = ? WHERE order_id = ?",
-            (status, filled_quantity, now, order_id),
-        )
+        if filled_quantity is None:
+            conn.execute(
+                "UPDATE orders SET status = ?, updated_at = ? WHERE order_id = ?",
+                (status, now, order_id),
+            )
+        else:
+            conn.execute(
+                "UPDATE orders SET status = ?, filled_quantity = ?, updated_at = ? WHERE order_id = ?",
+                (status, filled_quantity, now, order_id),
+            )
         conn.commit()
         row = conn.execute("SELECT * FROM orders WHERE order_id = ?", (order_id,)).fetchone()
     finally:
