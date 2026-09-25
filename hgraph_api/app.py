@@ -27,7 +27,8 @@ def create_app() -> FastAPI:
     )
 
     # CORS — allow the UI dev server and any configured origins
-    origins = [o.strip() for o in api_config["API_CORS_ORIGINS"].split(",") if o.strip()]
+    cors_origins = os.getenv("API_CORS_ORIGINS", api_config.get("API_CORS_ORIGINS", ""))
+    origins = [o.strip() for o in cors_origins.split(",") if o.strip()]
     app.add_middleware(
         CORSMiddleware,
         allow_origins=origins,
@@ -37,7 +38,8 @@ def create_app() -> FastAPI:
     )
 
     # Store db_dir in app state so routers can access it
-    app.state.db_dir = api_config["API_DB_DIR"]
+    # Read from env at factory time so CLI --db-dir takes effect
+    app.state.db_dir = os.getenv("API_DB_DIR", api_config.get("API_DB_DIR", "."))
 
     # Entitlements enforcement on write endpoints (off by default for dev;
     # when on, errors in the checker fail closed)

@@ -11,6 +11,7 @@ from hgraph_static_admin.portfolio_store import (
     get_all_portfolios,
     get_book,
     get_portfolio,
+    init_portfolio_db,
 )
 
 __all__ = ("router",)
@@ -20,7 +21,9 @@ router = APIRouter(prefix="/api/v1", tags=["portfolios"])
 
 def _db_path(request: Request) -> str:
     db_dir = getattr(request.app.state, "db_dir", ".")
-    return os.path.join(db_dir, api_config.get("PORTFOLIO_DB_PATH", "portfolio_data.db"))
+    db = os.path.join(db_dir, api_config.get("PORTFOLIO_DB_PATH", "portfolio_data.db"))
+    init_portfolio_db(db)
+    return db
 
 
 def _portfolio_to_response(p) -> PortfolioResponse:
