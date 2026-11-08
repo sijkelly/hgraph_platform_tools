@@ -438,6 +438,11 @@ def _add_serve_parser(subparsers: argparse._SubParsersAction) -> None:
     p.add_argument("--port", type=int, default=None, help="Bind port (default: 8000)")
     p.add_argument("--db-dir", type=str, default=None, help="Directory containing SQLite databases")
     p.add_argument("--reload", action="store_true", help="Enable auto-reload for development")
+    p.add_argument(
+        "--dev-auth",
+        action="store_true",
+        help="Trust X-User-Id headers without verification (local development only; binds to 127.0.0.1 by default)",
+    )
     p.set_defaults(func=_run_serve)
 
 
@@ -453,6 +458,10 @@ def _run_serve(args: argparse.Namespace) -> int:
         os.environ["API_HOST"] = args.host
     if args.port:
         os.environ["API_PORT"] = str(args.port)
+    if args.dev_auth:
+        os.environ["API_AUTH_MODE"] = "dev"
+        if not args.host:
+            os.environ["API_HOST"] = "127.0.0.1"
 
     from hgraph_api.config import api_config
 
@@ -467,6 +476,29 @@ def _run_serve(args: argparse.Namespace) -> int:
         port=port,
         reload=args.reload,
     )
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# Subcommand: api-token
+# ---------------------------------------------------------------------------
+def _add_api_token_parser(subparsers: argparse._SubParsersAction) -> None:
+    p = subparsers.add_parser("api-token", help="Mint a signed bearer token for the OMS API")
+    p.add_argument("user_id", type=str, help="User identifier (must exist in the entitlements database)")
+    p.add_argument("--ttl-hours", type=float, default=8.0, help="Token lifetime in hours (default: 8)")
+    p.set_defaults(func=_run_api_token)
+
+
+def _run_api_token(args: argparse.Namespace) -> int:
+    from hgraph_api.config import api_config
+    from hgraph_api.middleware.tokens import create_token
+
+    try:
+        token = create_token(args.user_id, api_config["API_AUTH_SECRET"], ttl_seconds=int(args.ttl_hours * 3600))
+    except ValueError as exc:
+        logger.error("Cannot create token: %s", exc)
+        return 1
+    sys.stdout.write(token + "\n")
     return 0
 
 
@@ -496,6 +528,7 @@ def main() -> None:
     _add_ev_rate_subscribe_parser(subparsers)
     _add_credit_subscribe_parser(subparsers)
     _add_serve_parser(subparsers)
+    _add_api_token_parser(subparsers)
 
     args = parser.parse_args()
 

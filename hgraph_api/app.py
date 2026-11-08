@@ -5,6 +5,7 @@ Creates and configures the main FastAPI app with all routers, middleware,
 and CORS settings.  Call :func:`create_app` to get a ready-to-run instance.
 """
 
+import logging
 import os
 
 from fastapi import FastAPI
@@ -12,10 +13,12 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from hgraph_api.config import api_config
 from hgraph_api.routers import credit, orders, parties, portfolios, entitlements, health
-from hgraph_api.middleware.auth import AuthMiddleware
+from hgraph_api.middleware.auth import AUTH_MODE_DEV, AuthMiddleware, AuthSettings
 from hgraph_api.websockets import credit_ws, orders_ws
 
 __all__ = ("create_app",)
+
+logger = logging.getLogger(__name__)
 
 
 def create_app() -> FastAPI:
@@ -26,24 +29,9 @@ def create_app() -> FastAPI:
         version="0.1.0",
     )
 
-    # CORS — allow the UI dev server and any configured origins
-    cors_origins = os.getenv("API_CORS_ORIGINS", api_config.get("API_CORS_ORIGINS", ""))
-    origins = [o.strip() for o in cors_origins.split(",") if o.strip()]
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=origins,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-
     # Store db_dir in app state so routers can access it
     # Read from env at factory time so CLI --db-dir takes effect
     app.state.db_dir = os.getenv("API_DB_DIR", api_config.get("API_DB_DIR", "."))
-
-    # Entitlements enforcement on write endpoints (off by default for dev;
-    # when on, errors in the checker fail closed)
-    app.state.enforce_entitlements = os.getenv("API_ENFORCE_ENTITLEMENTS", "").lower() in ("1", "true", "yes")
 
     # Register routers
     app.include_router(health.router)
@@ -55,7 +43,29 @@ def create_app() -> FastAPI:
     app.include_router(credit_ws.router)
     app.include_router(orders_ws.router)
 
-    # Auth middleware — checks X-User-Id header and entitlements on write endpoints
+    # Authentication settings are resolved at factory time (so CLI flags that set
+    # env vars take effect) and validated: token mode without a secret fails here.
+    app.state.auth_settings = AuthSettings.from_env(api_config)
+    if app.state.auth_settings.mode == AUTH_MODE_DEV:
+        logger.warning(
+            "API_AUTH_MODE=dev: X-User-Id headers are trusted without verification. "
+            "Never expose this server beyond localhost."
+        )
+
+    # Middleware added last runs first: CORS must wrap auth so that preflight
+    # requests and error responses still carry CORS headers.
     app.add_middleware(AuthMiddleware)
+
+    cors_origins = os.getenv("API_CORS_ORIGINS", api_config.get("API_CORS_ORIGINS", ""))
+    origins = [o.strip() for o in cors_origins.split(",") if o.strip()]
+    if "*" in origins:
+        raise ValueError("API_CORS_ORIGINS must list explicit origins; '*' is not allowed with credentials")
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=origins,
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type", "X-User-Id"],
+    )
 
     return app

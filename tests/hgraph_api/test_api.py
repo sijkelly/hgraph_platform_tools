@@ -24,6 +24,7 @@ from hg_oap.portfolio.portfolio_info import (
 )
 
 from hgraph_api.app import create_app
+from hgraph_entitlements.example_code import get_db_connection, initialize_db, update_user_role
 from hgraph_static_admin.credit_store import (
     init_credit_db,
     upsert_credit_limit,
@@ -58,8 +59,20 @@ def db_dir(tmp_path):
 
 
 @pytest.fixture()
-def client(db_dir):
-    """Create a FastAPI TestClient with databases pointed at the temp dir."""
+def client(db_dir, monkeypatch):
+    """Create a FastAPI TestClient (dev auth, ``test-user`` as a Trader) pointed at the temp dir."""
+    import os
+
+    entitlements_db = os.path.join(db_dir, "entitlements.db")
+    conn = get_db_connection(entitlements_db)
+    try:
+        initialize_db(conn)
+        update_user_role(conn, "test-user", "Trader")
+    finally:
+        conn.close()
+
+    monkeypatch.setenv("API_AUTH_MODE", "dev")
+    monkeypatch.setenv("ENTITLEMENTS_DB_PATH", entitlements_db)
     app = create_app()
     app.state.db_dir = db_dir
     return TestClient(app, headers={"X-User-Id": "test-user"})
@@ -834,34 +847,32 @@ def test_update_order_status_preserves_fill(client):
 # ---------------------------------------------------------------------------
 
 
-def test_auth_denies_without_permission(db_dir, monkeypatch):
-    """With enforcement on, a user lacking the action permission gets 403."""
-    app = create_app()
-    app.state.db_dir = db_dir
-    app.state.enforce_entitlements = True
-    monkeypatch.setattr("hgraph_entitlements.checker.check_permission", lambda user_id, action, conn=None: False)
+def test_auth_denies_without_permission(client, db_dir):
+    """A known user lacking the action permission gets 403."""
+    import os
 
-    c = TestClient(app, headers={"X-User-Id": "test-user"})
-    r = c.post("/api/v1/orders", json=_create_order_payload())
+    conn = get_db_connection(os.path.join(db_dir, "entitlements.db"))
+    try:
+        update_user_role(conn, "viewer", "Read_only")
+    finally:
+        conn.close()
+
+    r = client.post("/api/v1/orders", json=_create_order_payload(), headers={"X-User-Id": "viewer"})
     assert r.status_code == 403
     assert "lacks permission" in r.json()["detail"]
 
 
-def test_auth_fails_closed_on_checker_error(db_dir, monkeypatch):
-    """With enforcement on, an erroring entitlements checker denies the request (503)."""
-    app = create_app()
-    app.state.db_dir = db_dir
-    app.state.enforce_entitlements = True
+def test_auth_fails_closed_on_checker_error(client, monkeypatch):
+    """An erroring entitlements lookup denies the request (503)."""
 
-    def _boom(user_id, action, conn=None):
+    def _boom(*_args, **_kwargs):
         raise RuntimeError("entitlements db unavailable")
 
-    monkeypatch.setattr("hgraph_entitlements.checker.check_permission", _boom)
+    monkeypatch.setattr("hgraph_entitlements.example_code.get_db_connection", _boom)
 
-    c = TestClient(app, headers={"X-User-Id": "test-user"})
-    r = c.post("/api/v1/orders", json=_create_order_payload())
+    r = client.post("/api/v1/orders", json=_create_order_payload())
     assert r.status_code == 503
-    assert "request denied" in r.json()["detail"].lower()
+    assert "unavailable" in r.json()["detail"].lower()
 
 
 # ---------------------------------------------------------------------------

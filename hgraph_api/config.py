@@ -21,6 +21,10 @@ def _load_api_config() -> dict[str, str]:
         "API_CORS_ORIGINS": os.getenv("API_CORS_ORIGINS", "http://localhost:5173,http://localhost:3000"),
         "API_DB_DIR": os.getenv("API_DB_DIR", "."),
         "ANTHROPIC_API_KEY": os.getenv("ANTHROPIC_API_KEY", ""),
+        # "token" (default): verify HS256 bearer tokens signed with API_AUTH_SECRET.
+        # "dev": trust the X-User-Id header — local development only.
+        "API_AUTH_MODE": os.getenv("API_AUTH_MODE", "token"),
+        "API_AUTH_SECRET": os.getenv("API_AUTH_SECRET", ""),
     }
 
 

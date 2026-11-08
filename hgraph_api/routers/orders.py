@@ -83,7 +83,7 @@ def create_order(request_body: CreateOrderRequest, request: Request) -> OrderRes
 
     db = _order_db_path(request)
     init_order_db(db)
-    order = store_create(db, request_body.model_dump())
+    order = store_create(db, request_body.model_dump(), created_by=getattr(request.state, "user_id", ""))
     return OrderResponse(**order)
 
 

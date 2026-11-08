@@ -13,6 +13,8 @@ import os
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
+from hgraph_api.middleware.auth import authenticate_websocket
+
 __all__ = ("router",)
 
 logger = logging.getLogger(__name__)
@@ -42,6 +44,8 @@ async def orders_websocket(websocket: WebSocket):
     On connect, sends a full snapshot.  Then polls for changes and
     pushes updates to the client.  Send ``"close"`` to cleanly disconnect.
     """
+    if await authenticate_websocket(websocket) is None:
+        return
     await websocket.accept()
     _clients.add(websocket)
     logger.info("Orders WebSocket client connected (%d total)", len(_clients))
@@ -54,9 +58,7 @@ async def orders_websocket(websocket: WebSocket):
             orders = _snapshot_orders(db_path)
 
             if orders != prev_orders or prev_orders is None:
-                await websocket.send_text(
-                    json.dumps({"type": "orders.snapshot", "data": orders})
-                )
+                await websocket.send_text(json.dumps({"type": "orders.snapshot", "data": orders}))
                 prev_orders = orders
 
             try:
