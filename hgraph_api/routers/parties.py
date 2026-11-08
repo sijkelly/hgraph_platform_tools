@@ -15,6 +15,7 @@ from hgraph_static_admin.party_store import (
     get_all_trading_relationships,
     get_legal_entity,
     get_trading_relationship,
+    init_party_db,
 )
 
 __all__ = ("router",)
@@ -24,7 +25,9 @@ router = APIRouter(prefix="/api/v1/parties", tags=["parties"])
 
 def _db_path(request: Request) -> str:
     db_dir = getattr(request.app.state, "db_dir", ".")
-    return os.path.join(db_dir, api_config.get("PARTY_DB_PATH", "party_data.db"))
+    db = os.path.join(db_dir, api_config.get("PARTY_DB_PATH", "party_data.db"))
+    init_party_db(db)
+    return db
 
 
 def _agreement_to_response(agreement) -> MasterAgreementResponse | None:

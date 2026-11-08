@@ -446,15 +446,20 @@ def _run_serve(args: argparse.Namespace) -> int:
 
     import uvicorn
 
-    from hgraph_api.config import api_config
-
-    host = args.host or api_config["API_HOST"]
-    port = args.port or int(api_config["API_PORT"])
-
+    # Set env vars BEFORE importing api_config so the factory picks them up
     if args.db_dir:
         os.environ["API_DB_DIR"] = args.db_dir
+    if args.host:
+        os.environ["API_HOST"] = args.host
+    if args.port:
+        os.environ["API_PORT"] = str(args.port)
 
-    logger.info("Starting OMS API server on %s:%d", host, port)
+    from hgraph_api.config import api_config
+
+    host = api_config["API_HOST"]
+    port = int(api_config["API_PORT"])
+
+    logger.info("Starting OMS API server on %s:%d (db_dir=%s)", host, port, api_config["API_DB_DIR"])
     uvicorn.run(
         "hgraph_api.app:create_app",
         factory=True,

@@ -13,6 +13,7 @@ from hgraph_static_admin.credit_store import (
     get_credit_limit,
     get_credit_limits_for_counterparty,
     get_credit_utilization,
+    init_credit_db,
 )
 
 __all__ = ("router",)
@@ -22,7 +23,9 @@ router = APIRouter(prefix="/api/v1/credit", tags=["credit"])
 
 def _db_path(request: Request) -> str:
     db_dir = getattr(request.app.state, "db_dir", ".")
-    return os.path.join(db_dir, api_config.get("CREDIT_DB_PATH", "credit_data.db"))
+    db = os.path.join(db_dir, api_config.get("CREDIT_DB_PATH", "credit_data.db"))
+    init_credit_db(db)
+    return db
 
 
 def _limit_to_response(cl) -> CreditLimitResponse:
