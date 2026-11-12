@@ -9,7 +9,7 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
-    "hgraph>=0.5",
+    "hgraph>=0.8.40,<0.9",
     "pandas>=2.0",
     "numpy>=1.23",
     "python-dotenv>=1.0",
@@ -36,7 +36,7 @@ api = [
     "anthropic>=0.40",
 ]
 oap = [
-    "hg-oap>=0.1",
+    "hg-oap>=0.3.3",
 ]
 test = [
     "pytest>=7.4",
@@ -59,6 +59,13 @@ hgraph-tools = "cli:main"
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+# ---------- uv ----------
+# hg-oap is installed from the local clone on branch simon/extensions
+# (fork: https://github.com/sijkelly/hg_oap). The parties, credit, regulatory
+# and sales-order modules used here are not in the PyPI release.
+[tool.uv.sources]
+hg-oap = { path = "../hg_oap", editable = true }
 
 [tool.hatch.build.targets.wheel]
 packages = [
