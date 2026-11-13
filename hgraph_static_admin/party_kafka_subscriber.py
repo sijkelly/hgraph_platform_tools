@@ -112,8 +112,7 @@ def parse_legal_entity_message(msg: Dict[str, Any]) -> Tuple[str, LegalEntity | 
     classification = _CLASSIFICATION_MAP.get(classification_str)
     if classification is None:
         raise ValueError(
-            f"Unknown classification: {classification_str!r}. "
-            f"Expected one of: {list(_CLASSIFICATION_MAP.keys())}"
+            f"Unknown classification: {classification_str!r}. " f"Expected one of: {list(_CLASSIFICATION_MAP.keys())}"
         )
 
     entity = LegalEntity(
@@ -249,7 +248,7 @@ class PartyKafkaSubscriber:
             "PARTY_KAFKA_RELATIONSHIP_TOPIC", "party.trading_relationship"
         )
         self._running = False
-        self._receiver = None
+        self._receiver: Any = None  # KafkaReceiver, imported lazily in start()
         self._processed_count = 0
 
     def start(self, *, poll_interval_ms: int = 1000, max_messages: int | None = None) -> None:

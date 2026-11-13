@@ -9,7 +9,7 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
-    "hgraph>=0.5",
+    "hgraph>=0.8.40,<0.9",
     "pandas>=2.0",
     "numpy>=1.23",
     "python-dotenv>=1.0",
@@ -34,9 +34,18 @@ api = [
     "uvicorn[standard]>=0.34",
     "pydantic>=2.0",
     "anthropic>=0.40",
+    "pyjwt[crypto]>=2.8",
+    "httpx>=0.27",
+]
+ai = [
+    "mcp>=2.0",
+    "httpx>=0.27",
+]
+postgres = [
+    "psycopg[binary]>=3.2",
 ]
 oap = [
-    "hg-oap>=0.1",
+    "hg-oap>=0.3.3",
 ]
 test = [
     "pytest>=7.4",
@@ -47,7 +56,7 @@ test = [
     "httpx>=0.27",
 ]
 all = [
-    "hgraph-platform-tools[messaging,notification,database,web,oap,api]",
+    "hgraph-platform-tools[messaging,notification,database,web,oap,api,ai,postgres]",
 ]
 dev = [
     "hgraph-platform-tools[all,test]",
@@ -60,6 +69,13 @@ hgraph-tools = "cli:main"
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+# ---------- uv ----------
+# hg-oap is installed from the local clone on branch simon/extensions
+# (fork: https://github.com/sijkelly/hg_oap). The parties, credit, regulatory
+# and sales-order modules used here are not in the PyPI release.
+[tool.uv.sources]
+hg-oap = { path = "../hg_oap", editable = true }
+
 [tool.hatch.build.targets.wheel]
 packages = [
     "hgraph_trade",
@@ -68,7 +84,13 @@ packages = [
     "hgraph_static_admin",
     "hgraph_oap_adapter",
     "hgraph_api",
+    "hgraph_oms",
 ]
+
+# The CLI entry point and the shared configuration are top-level modules
+[tool.hatch.build.targets.wheel.force-include]
+"cli.py" = "cli.py"
+"secure_config.py" = "secure_config.py"
 
 # ---------- pytest ----------
 [tool.pytest.ini_options]
@@ -89,6 +111,7 @@ source_pkgs = [
     "hgraph_static_admin",
     "hgraph_oap_adapter",
     "hgraph_api",
+    "hgraph_oms",
 ]
 branch = true
 parallel = true
@@ -113,7 +136,9 @@ target-version = ["py312"]
 include = '\.pyi?$'
 extend-exclude = '''
 (
-  fpml_tag_dict_structure\.py
+  \.claude/
+  | venv_.*/
+  | fpml_tag_dict_structure\.py
   | fpml_tags\.py
   | output_fpml_tags\.py
 )
@@ -123,3 +148,22 @@ extend-exclude = '''
 [tool.mypy]
 files = ["."]
 ignore_missing_imports = true
+exclude = [
+    '^\.claude/',
+    '^\.venv/',
+    '^venv_.*/',
+    'fpml_tag_dict_structure\.py$',
+    'fpml_tags\.py$',
+    'output_fpml_tags\.py$',
+]
+
+# hgraph node signatures use time-series types (TS[...], TSD[...]) as wiring
+# annotations, which mypy cannot interpret. Keep those modules small and relax
+# the affected checks only there.
+[[tool.mypy.overrides]]
+module = [
+    "hgraph_oms.order_book",
+    "hgraph_oms.engine_graph",
+    "tests.hgraph_oms.test_order_book",
+]
+disable_error_code = ["type-arg", "attr-defined", "return-value", "assignment"]

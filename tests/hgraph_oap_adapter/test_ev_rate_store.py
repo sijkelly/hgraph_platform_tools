@@ -16,7 +16,6 @@ from hgraph_oap_adapter.ev_rate_store import (
     upsert_ev_rate,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -168,9 +167,7 @@ def test_get_with_as_of_within_range(db_path):
     )
     upsert_ev_rate(db_path, rate)
 
-    result = get_ev_rate(
-        db_path, InstrumentCategory.FIXED_FLOAT_SWAP, U.MMBtu, as_of=date(2026, 6, 15)
-    )
+    result = get_ev_rate(db_path, InstrumentCategory.FIXED_FLOAT_SWAP, U.MMBtu, as_of=date(2026, 6, 15))
     assert result is not None
     assert result.rate_per_unit == pytest.approx(0.02)
 
@@ -185,9 +182,7 @@ def test_get_with_as_of_before_effective(db_path):
     )
     upsert_ev_rate(db_path, rate)
 
-    result = get_ev_rate(
-        db_path, InstrumentCategory.FIXED_FLOAT_SWAP, U.MMBtu, as_of=date(2026, 1, 15)
-    )
+    result = get_ev_rate(db_path, InstrumentCategory.FIXED_FLOAT_SWAP, U.MMBtu, as_of=date(2026, 1, 15))
     assert result is None
 
 
@@ -201,9 +196,7 @@ def test_get_with_as_of_after_expiry(db_path):
     )
     upsert_ev_rate(db_path, rate)
 
-    result = get_ev_rate(
-        db_path, InstrumentCategory.FIXED_FLOAT_SWAP, U.MMBtu, as_of=date(2026, 7, 1)
-    )
+    result = get_ev_rate(db_path, InstrumentCategory.FIXED_FLOAT_SWAP, U.MMBtu, as_of=date(2026, 7, 1))
     assert result is None
 
 
@@ -211,9 +204,7 @@ def test_get_with_as_of_no_dates_always_matches(db_path, gas_swap_rate):
     """Rates with no effective/expiry should match any as_of date."""
     upsert_ev_rate(db_path, gas_swap_rate)
 
-    result = get_ev_rate(
-        db_path, InstrumentCategory.FIXED_FLOAT_SWAP, U.MMBtu, as_of=date(2030, 1, 1)
-    )
+    result = get_ev_rate(db_path, InstrumentCategory.FIXED_FLOAT_SWAP, U.MMBtu, as_of=date(2030, 1, 1))
     assert result is not None
 
 
@@ -227,9 +218,7 @@ def test_get_with_as_of_on_effective_date(db_path):
     )
     upsert_ev_rate(db_path, rate)
 
-    result = get_ev_rate(
-        db_path, InstrumentCategory.FIXED_FLOAT_SWAP, U.MMBtu, as_of=date(2026, 3, 1)
-    )
+    result = get_ev_rate(db_path, InstrumentCategory.FIXED_FLOAT_SWAP, U.MMBtu, as_of=date(2026, 3, 1))
     assert result is not None
 
 
@@ -243,9 +232,7 @@ def test_get_with_as_of_on_expiry_date(db_path):
     )
     upsert_ev_rate(db_path, rate)
 
-    result = get_ev_rate(
-        db_path, InstrumentCategory.FIXED_FLOAT_SWAP, U.MMBtu, as_of=date(2026, 3, 31)
-    )
+    result = get_ev_rate(db_path, InstrumentCategory.FIXED_FLOAT_SWAP, U.MMBtu, as_of=date(2026, 3, 31))
     assert result is not None
 
 

@@ -1,17 +1,18 @@
 """Tests for the entitlements module — checker, permissions, and DB operations."""
 
-import sqlite3
-
 import pytest
+
+from hgraph_oms.db import connect
 from hgraph_entitlements.checker import PermissionDeniedError, check_permission, get_allowed_actions, require_permission
 from hgraph_entitlements.example_code import get_user_role, initialize_db, update_user_role
 
 
 @pytest.fixture
-def ent_conn():
-    conn = sqlite3.connect(":memory:")
+def ent_conn(oms_db):
+    conn = connect(oms_db)
     initialize_db(conn)
-    return conn
+    yield conn
+    conn.close()
 
 
 @pytest.fixture

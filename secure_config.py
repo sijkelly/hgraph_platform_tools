@@ -66,6 +66,31 @@ def load_secure_config() -> Dict[str, str]:
         "MESSAGE_SENDER_ID": os.getenv("MESSAGE_SENDER_ID", "hgraph_platform"),
         "MESSAGE_TARGET_ID": os.getenv("MESSAGE_TARGET_ID", "booking_system"),
         "MESSAGE_VERSION": os.getenv("MESSAGE_VERSION", "1.0"),
+        # --- Trades booked from order fills ---
+        "INTERNAL_PARTY_ID": os.getenv("INTERNAL_PARTY_ID", "INTERNAL"),
+        "TRADE_OUTPUT_DIR": os.getenv("TRADE_OUTPUT_DIR", ""),
+        # Kafka topic booked trades are published to; empty disables delivery
+        "TRADE_KAFKA_TOPIC": os.getenv("TRADE_KAFKA_TOPIC", ""),
+        # --- Tenancy ---
+        # The customer this deployment serves; empty for a single-tenant deployment
+        "TENANT_ID": os.getenv("TENANT_ID", ""),
+        # PostgreSQL schema for the order data (default: tenant_<TENANT_ID> when a tenant is set)
+        "DATABASE_SCHEMA": os.getenv("DATABASE_SCHEMA", ""),
+        # Token claim that must equal TENANT_ID (e.g. tid, org_id) when tenants share an identity provider
+        "OIDC_TENANT_CLAIM": os.getenv("OIDC_TENANT_CLAIM", ""),
+        # --- Order core database ---
+        # postgresql://user:password@host:5432/dbname for orders, bookings, proposals, reference data
+        # and entitlements; empty keeps each store in its own SQLite file
+        "DATABASE_URL": os.getenv("DATABASE_URL", ""),
+        # --- API authentication ---
+        # "header" trusts the X-User-Id header (development only); "oidc" requires bearer tokens
+        "AUTH_MODE": os.getenv("AUTH_MODE", "header"),
+        "OIDC_ISSUER": os.getenv("OIDC_ISSUER", ""),
+        "OIDC_AUDIENCE": os.getenv("OIDC_AUDIENCE", ""),
+        # Token claim used as the user ID; must match the IDs in the entitlements store
+        "OIDC_USER_CLAIM": os.getenv("OIDC_USER_CLAIM", "sub"),
+        # Signing keys location; read from the issuer's discovery document if empty
+        "OIDC_JWKS_URL": os.getenv("OIDC_JWKS_URL", ""),
         # --- Notification templates ---
         "NOTIFICATION_TEMPLATE_DIR": os.getenv("NOTIFICATION_TEMPLATE_DIR", "hgraph_notification/templates"),
     }

@@ -1,6 +1,60 @@
 """Shared test fixtures for hgraph_platform_tools test suite."""
 
+import os
+import uuid
+
 import pytest
+
+from hgraph_oms.db import close_databases
+
+
+@pytest.fixture(params=["sqlite", "postgres"])
+def oms_db(request, tmp_path):
+    """A fresh, empty database for the order core, as a target the stores accept.
+
+    Runs each test on SQLite and, when ``TEST_POSTGRES_URL`` points at a PostgreSQL database the
+    tests may create schemas in, on PostgreSQL too (each test in a schema of its own).
+    """
+    if request.param == "sqlite":
+        yield str(tmp_path / "oms.db")
+        return
+
+    url = os.getenv("TEST_POSTGRES_URL")
+    if not url:
+        pytest.skip("TEST_POSTGRES_URL is not set")
+    psycopg = pytest.importorskip("psycopg")
+
+    schema = f"test_{uuid.uuid4().hex}"
+    with psycopg.connect(url, autocommit=True) as connection:
+        connection.execute(f'CREATE SCHEMA "{schema}"')
+    try:
+        yield f"{url}{'&' if '?' in url else '?'}options=-csearch_path%3D{schema}"
+    finally:
+        close_databases()
+        with psycopg.connect(url, autocommit=True) as connection:
+            connection.execute(f'DROP SCHEMA "{schema}" CASCADE')
+
+
+@pytest.fixture
+def postgres_schemas():
+    """Returns ``(url, [schema, ...])``: a PostgreSQL URL and unused schema names, dropped afterwards.
+
+    Skipped unless ``TEST_POSTGRES_URL`` is set.  The schemas are not created; code under test does that.
+    """
+    url = os.getenv("TEST_POSTGRES_URL")
+    if not url:
+        pytest.skip("TEST_POSTGRES_URL is not set")
+    psycopg = pytest.importorskip("psycopg")
+
+    run = uuid.uuid4().hex[:12]
+    schemas = [f"tenant_{run}_{name}" for name in ("a", "b")]
+    try:
+        yield url, schemas
+    finally:
+        close_databases()
+        with psycopg.connect(url, autocommit=True) as connection:
+            for schema in schemas:
+                connection.execute(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE')
 
 
 @pytest.fixture

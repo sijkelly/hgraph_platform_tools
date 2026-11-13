@@ -34,3 +34,13 @@ Thumbs.db
 # Booked trade output & quarantine
 output/
 quarantine/
+
+# Old / alternate virtual environments
+venv_*/
+
+# Coverage and tool caches
+.coverage
+.coverage.*
+htmlcov/
+.mypy_cache/
+.pytest_cache/

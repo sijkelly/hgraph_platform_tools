@@ -24,9 +24,7 @@ from kafka.consumer.fetcher import ConsumerRecord
 
 from secure_config import config
 
-__all__ = (
-    "KafkaReceiver",
-)
+__all__ = ("KafkaReceiver",)
 
 logger = logging.getLogger(__name__)
 

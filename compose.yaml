@@ -1,0 +1,35 @@
+# Runs the OMS API with its data in a named volume.
+#
+#   docker compose up --build
+#
+# Needs the hg_oap fork checked out next to this repository (see README, "First Time Setup").
+# Settings come from .env if there is one (see .env.example); the image defaults are for
+# development, with callers identified by the unverified X-User-Id header.
+
+services:
+  api:
+    build:
+      context: .
+      additional_contexts:
+        hg_oap: ../hg_oap
+    image: hgraph-oms:local
+    platform: linux/amd64
+    ports:
+      - "127.0.0.1:${API_PUBLISHED_PORT:-8000}:8000"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      # Fixed inside the container, whatever .env says
+      API_HOST: 0.0.0.0
+      API_PORT: "8000"
+      API_DB_DIR: /data
+      ENTITLEMENTS_DB_PATH: /data/hgraph_entitlements.db
+    volumes:
+      - oms-data:/data
+    restart: unless-stopped
+    # Allow the order engine to finish what it is processing
+    stop_grace_period: 30s
+
+volumes:
+  oms-data:

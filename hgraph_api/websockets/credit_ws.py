@@ -17,6 +17,9 @@ import os
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
+from hgraph_api.middleware.auth import accept_websocket
+from hgraph_api.services.order_engine import order_db_target
+
 __all__ = ("router",)
 
 logger = logging.getLogger(__name__)
@@ -29,7 +32,7 @@ _clients: set[WebSocket] = set()
 
 def _db_path(websocket: WebSocket) -> str:
     db_dir = getattr(websocket.app.state, "db_dir", ".")
-    return os.path.join(db_dir, "credit_data.db")
+    return order_db_target(websocket.app, db_dir, "credit_data.db")
 
 
 def _snapshot_limits(db_path: str) -> list[dict]:
@@ -77,7 +80,8 @@ async def credit_websocket(websocket: WebSocket):
     On connect, sends a full snapshot.  Then polls for changes and
     pushes updates to the client.  Send ``"close"`` to cleanly disconnect.
     """
-    await websocket.accept()
+    if not await accept_websocket(websocket):
+        return
     _clients.add(websocket)
     logger.info("Credit WebSocket client connected (%d total)", len(_clients))
 
@@ -93,15 +97,11 @@ async def credit_websocket(websocket: WebSocket):
 
             # Send on first connect or when data changes
             if limits != prev_limits or prev_limits is None:
-                await websocket.send_text(
-                    json.dumps({"type": "credit.limits", "data": limits})
-                )
+                await websocket.send_text(json.dumps({"type": "credit.limits", "data": limits}))
                 prev_limits = limits
 
             if utilizations != prev_utilizations or prev_utilizations is None:
-                await websocket.send_text(
-                    json.dumps({"type": "credit.utilizations", "data": utilizations})
-                )
+                await websocket.send_text(json.dumps({"type": "credit.utilizations", "data": utilizations}))
                 prev_utilizations = utilizations
 
             # Also handle incoming messages (ping/pong, commands)

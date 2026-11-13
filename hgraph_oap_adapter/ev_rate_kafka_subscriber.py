@@ -81,7 +81,7 @@ def _resolve_unit(unit_str: str) -> Unit:
     return unit
 
 
-def parse_ev_rate_message(msg: Dict[str, Any]) -> Tuple[str, EVRate | None, str | None]:
+def parse_ev_rate_message(msg: Dict[str, Any]) -> Tuple[str, EVRate | None, str]:
     """Parse an EV rate Kafka message.
 
     :param msg: Deserialised JSON message dict.
@@ -170,7 +170,7 @@ class EVRateKafkaSubscriber:
         self.group_id = group_id or config.get("KAFKA_CONSUMER_GROUP", "hgraph_platform")
         self.ev_rate_topic = ev_rate_topic or config.get("EV_RATE_KAFKA_TOPIC", "oap.ev_rate")
         self._running = False
-        self._receiver = None
+        self._receiver: Any = None  # KafkaReceiver, imported lazily in start()
         self._processed_count = 0
 
     def start(self, *, poll_interval_ms: int = 1000, max_messages: int | None = None) -> None:

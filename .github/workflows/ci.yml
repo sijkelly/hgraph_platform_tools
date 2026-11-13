@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    # The order core's stores are tested on SQLite and on this PostgreSQL
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_POSTGRES_URL: postgresql://postgres:postgres@localhost:5432/postgres
+    defaults:
+      run:
+        working-directory: hgraph_platform_tools
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: hgraph_platform_tools
+
+      # pyproject.toml installs hg-oap from ../hg_oap (the simon/extensions fork branch),
+      # so it is checked out as a sibling directory.
+      - uses: actions/checkout@v4
+        with:
+          repository: sijkelly/hg_oap
+          ref: simon/extensions
+          path: hg_oap
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Install
+        run: |
+          uv venv --python 3.12 .venv
+          uv pip install -e ".[dev]"
+
+      - name: Format check
+        run: uv run black --check .
+
+      - name: Type check
+        run: uv run mypy .
+
+      - name: Tests
+        run: uv run pytest tests/ -q --cov --cov-report=term-missing
+
+  image:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: hgraph_platform_tools
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: hgraph_platform_tools
+
+      - uses: actions/checkout@v4
+        with:
+          repository: sijkelly/hg_oap
+          ref: simon/extensions
+          path: hg_oap
+
+      - name: Build image
+        run: docker build --build-context hg_oap=../hg_oap -t hgraph-oms:ci .
+
+      - name: Smoke test
+        run: |
+          docker run -d --name oms -p 8000:8000 hgraph-oms:ci
+          for attempt in $(seq 1 30); do
+            curl -fs http://localhost:8000/api/v1/health && break
+            sleep 2
+          done
+          # An order, accepted and filled, must come out as a booked trade
+          api=http://localhost:8000/api/v1
+          order_id=$(curl -fs -X POST "$api/orders" -H 'X-User-Id: ci' -H 'Content-Type: application/json' \
+            -d '{"instrument":"Henry Hub Natural Gas","side":"Buy","quantity":"10000","unit":"MMBtu","price":"3.5","counterparty":"ACME","delivery_period":"January 2027","order_type":"Limit"}' \
+            | python3 -c 'import json, sys; print(json.load(sys.stdin)["order_id"])')
+          curl -fs -X PATCH "$api/orders/$order_id" -H 'X-User-Id: ci' -H 'Content-Type: application/json' -d '{"status":"Working"}'
+          curl -fs -X POST "$api/orders/$order_id/fills" -H 'X-User-Id: ci' -H 'Content-Type: application/json' -d '{"quantity":"10000","price":"3.5"}'
+          sleep 2
+          curl -fs "$api/orders/$order_id/trades" | tee trades.json
+          python3 -c 'import json; trades = json.load(open("trades.json")); assert [t["status"] for t in trades] == ["Booked"], trades'
+          docker stop oms
+
+      - name: Container logs
+        if: always()
+        run: docker logs oms || true

@@ -14,8 +14,6 @@ import re
 import sqlite3
 from typing import List, Dict, Any
 
-import requests
-
 from secure_config import config
 
 __all__ = (
@@ -63,7 +61,15 @@ def fetch_static_data(api_url: str) -> List[Dict[str, Any]]:
     :param api_url: The URL of the API endpoint.
     :returns: List of raw static data dictionaries.
     """
-    response = requests.get(api_url)
+    # Imported here so the rest of the package works without the optional "web" dependencies
+    try:
+        import requests  # type: ignore[import-untyped]
+    except ImportError:
+        raise RuntimeError(
+            "The 'requests' package is required to fetch static data. Install it with: uv pip install -e '.[web]'"
+        ) from None
+
+    response = requests.get(api_url, timeout=30)
     response.raise_for_status()
     return response.json()
 

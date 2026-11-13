@@ -18,6 +18,8 @@ from hgraph_static_admin.party_store import (
     init_party_db,
 )
 
+from hgraph_api.services.order_engine import order_db_target
+
 __all__ = ("router",)
 
 router = APIRouter(prefix="/api/v1/parties", tags=["parties"])
@@ -25,7 +27,7 @@ router = APIRouter(prefix="/api/v1/parties", tags=["parties"])
 
 def _db_path(request: Request) -> str:
     db_dir = getattr(request.app.state, "db_dir", ".")
-    db = os.path.join(db_dir, api_config.get("PARTY_DB_PATH", "party_data.db"))
+    db = order_db_target(request.app, db_dir, api_config.get("PARTY_DB_PATH", "party_data.db"))
     init_party_db(db)
     return db
 

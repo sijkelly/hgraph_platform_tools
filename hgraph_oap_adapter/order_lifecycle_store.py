@@ -91,15 +91,9 @@ CREATE TABLE IF NOT EXISTS order_lifecycle_events (
 )
 """
 
-_CREATE_IDX_ORDER_ID = (
-    "CREATE INDEX IF NOT EXISTS idx_order_lifecycle_order_id ON order_lifecycle_events (order_id)"
-)
-_CREATE_IDX_STATE = (
-    "CREATE INDEX IF NOT EXISTS idx_order_lifecycle_state ON order_lifecycle_events (state)"
-)
-_CREATE_IDX_TIMESTAMP = (
-    "CREATE INDEX IF NOT EXISTS idx_order_lifecycle_timestamp ON order_lifecycle_events (timestamp)"
-)
+_CREATE_IDX_ORDER_ID = "CREATE INDEX IF NOT EXISTS idx_order_lifecycle_order_id ON order_lifecycle_events (order_id)"
+_CREATE_IDX_STATE = "CREATE INDEX IF NOT EXISTS idx_order_lifecycle_state ON order_lifecycle_events (state)"
+_CREATE_IDX_TIMESTAMP = "CREATE INDEX IF NOT EXISTS idx_order_lifecycle_timestamp ON order_lifecycle_events (timestamp)"
 
 
 # ---------------------------------------------------------------------------

@@ -1,10 +1,101 @@
 # hgraph_platform_tools
 
 Platform tooling built on top of the [hgraph](https://github.com/hhenson/hgraph) forward propagation graph framework.
-Provides trade booking, entitlements management, static data administration, and notification pipelines
-for commodity and financial trade processing.
+Provides an order management API, trade booking, entitlements management, static data administration, and
+notification pipelines for commodity and financial trade processing.
 
 ## Features
+
+### Order Management API (`hgraph_api`)
+- **REST + WebSocket** — FastAPI service for orders, credit, parties, portfolios and entitlements
+- **Pre-trade credit check** — Orders are rejected when they would breach a counterparty credit limit
+- **Natural-language order entry** — Free text or pasted chat parsed into order fields via the Claude API
+- **UI** — Served to the [hgraph_oms_ui](https://github.com/sijkelly/hgraph_oms_ui) React front end
+
+### Order Core (`hgraph_oms`)
+- **Lifecycle state machine** — Pending → Working → Partially Filled → Filled, with reject, amend and cancel;
+  invalid transitions are refused with a reason
+- **Pre-trade checks** — Credit (including notional reserved by other open orders) and entitlements
+- **hgraph order book** — The checks and state machine run as an hgraph node, identically live or in simulation
+- **Event log and replay** — Every message and its outcome is appended to SQLite; orders are rebuilt from the
+  log on restart
+- **Real-time engine** — `OrderEngine` runs the graph on a thread so synchronous callers can submit and wait.
+  The `hgraph_api` order endpoints and the `/ws/orders` feed run on it; orders are stored in
+  `order_events.db` in the API's `--db-dir`.
+- **Fills become trades** — Each fill is a trade ticket that is mapped by the booking pipeline and written to
+  `booked_trades/` (override with `TRADE_OUTPUT_DIR`). The outcome is recorded per trade, a failure keeps its
+  reason, and any fill not yet booked is booked on restart. `GET /api/v1/trades` and
+  `GET /api/v1/orders/{id}/trades` show the status. Instrument names are resolved through demo product
+  reference data in `hgraph_oms/trades.py`.
+- **Delivery to the ETRM over Kafka** — Set `TRADE_KAFKA_TOPIC` (brokers from `KAFKA_BOOTSTRAP_SERVERS`) and
+  each booked trade is published to that topic, keyed by trade ID, from a background thread. A trade stays
+  `Pending` and is retried until the broker acknowledges it, including across restarts. Delivery is
+  at-least-once, so consumers should ignore a trade ID they have already processed.
+  `GET /api/v1/trades?undelivered=true` lists what is still waiting.
+
+### AI Layer
+- **Order parsing** — `POST /api/v1/orders/parse-nlp` turns free text or a pasted client message into order
+  fields with a confidence each, using the Claude API with a schema-enforced reply. The result carries
+  `warnings` for anything that would stop the order submitting or its trades booking. The model defaults to
+  `claude-opus-5-5`; set `ORDER_PARSER_MODEL` to change it.
+- **Parser evaluation** — `uv run python scripts/eval_order_parser.py --dry-run` lists the labelled messages
+  in `evals/order_parser/`; with `--yes` it runs them through the parser and reports accuracy per field. The
+  shipped cases are synthetic; see `evals/order_parser/README.md`.
+- **Proposals, confirmed by a person** — An agent drafts an order with `POST /api/v1/proposals`, which changes
+  nothing in the order book. A person confirms it (`POST /api/v1/proposals/{id}/confirm`), which submits the
+  order under their name through the normal credit check, or dismisses it. The author of a proposal cannot
+  confirm it.
+- **MCP server** — `hgraph-tools mcp --api-url http://localhost:8000 --user-id ai-agent` gives an AI agent
+  tools to read orders, trades, counterparties, credit and products and to draft proposals. There is no tool
+  that submits, amends, fills or cancels an order.
+
+### Database
+- **SQLite by default** — With nothing configured, each store is a SQLite file in the API's database
+  directory. Good for development and demos.
+- **PostgreSQL** — Set `DATABASE_URL=postgresql://user:password@host:5432/dbname` (and install the `postgres`
+  extra) and the order log, trade bookings, proposals, parties, portfolios, credit and entitlements all use
+  that database. Tables are created on first use. The Kafka subscribers and `hgraph-tools entitlements` read
+  the same setting, so they write where the API reads. Nothing is migrated from existing SQLite files.
+- **One engine per database** — The order engine holds a PostgreSQL advisory lock on its schema, so a second
+  API instance pointed at the same database refuses to process orders (`503`) rather than run a second,
+  diverging order book. After a crash the lock is released with the connection and a restart takes over.
+- **Still SQLite only** — EV rates, the order-lifecycle analytics store and the legacy `static-admin` pipeline.
+
+### Tenancy
+- **One deployment per customer** — Each customer gets its own API process, and with it its own order engine,
+  order log, reference data and entitlements. Nothing in one deployment can read another's orders. Set
+  `TENANT_ID` to name the customer a deployment serves; leave it empty for a single-tenant installation.
+- **Shared PostgreSQL** — Customers can share one database server. With `TENANT_ID=acme` the order data lives
+  in the schema `tenant_acme` (created on first start; override with `DATABASE_SCHEMA`), and the engine's
+  single-writer lock is per schema, so each customer's engine runs independently.
+- **Shared identity provider** — If customers sign in through the same provider, set `OIDC_TENANT_CLAIM` to
+  the claim that names the user's organisation (`tid` for Entra ID, `org_id` for Auth0). A token whose claim
+  is not this deployment's `TENANT_ID` is refused, even though the provider signed it.
+- **Per customer, set separately** — `API_DB_DIR` (or a separate Docker volume) for booked trade files,
+  `TRADE_KAFKA_TOPIC` and `INTERNAL_PARTY_ID`. Two customers must not share a trade topic. On SQLite, also
+  `ENTITLEMENTS_DB_PATH`.
+
+### Authentication
+- **Development (`AUTH_MODE=header`, the default)** — The caller is whoever the `X-User-Id` header says.
+  Nothing verifies it, so use this only on a developer machine.
+- **OpenID Connect (`AUTH_MODE=oidc`)** — Every request and WebSocket connection must carry a bearer token
+  from your identity provider (Entra ID, Okta, Auth0, Keycloak, ...). Set `OIDC_ISSUER` and `OIDC_AUDIENCE`;
+  the signing keys are found through the issuer's discovery document. The token's signature, issuer, audience
+  and expiry are checked, and `X-User-Id` is ignored. The server refuses to start if the settings are
+  incomplete.
+- **User IDs** — The user ID is the token's `sub` claim, or the claim named by `OIDC_USER_CLAIM` (for example
+  `email`). Entitlements must be granted to that same ID. `GET /api/v1/me` shows who the API takes you to be.
+  Set `API_ENFORCE_ENTITLEMENTS=true` as well, or any signed-in user can trade.
+- **WebSockets** — Send the token in the `Authorization` header, or from a browser as the subprotocol pair
+  `new WebSocket(url, ["bearer", token])`.
+- **Agents** — Give the MCP server its own service account: set `OMS_TOKEN_URL`, `OMS_CLIENT_ID` and
+  `OMS_CLIENT_SECRET` (client-credentials grant, renewed automatically), or `OMS_API_TOKEN` for a fixed token.
+  Because the agent's identity comes from its token, it cannot confirm its own proposals.
+
+### hg_oap Adapters (`hgraph_oap_adapter`)
+- **Domain adapters** — Convert `hg_oap` swaps, parties, order lifecycle events and regulatory
+  reports into booking-pipeline and data-lake records
+- **EV rates** — Kafka subscriber and SQLite store for sales expected-value rates
 
 ### Trade Booking Pipeline
 - **Commodity instruments** — Swap (fixed/float and float/float), Option, Forward, Future, Swaption, Physical (gas, bullion)
@@ -36,18 +127,53 @@ for commodity and financial trade processing.
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # 2. Clone the repository
-git clone https://github.com/your-repo/hgraph_platform_tools.git
+git clone https://github.com/sijkelly/hgraph_platform_tools.git
 cd hgraph_platform_tools
 
-# 3. Create virtual environment with Python 3.12
+# 3. Clone the hg_oap fork next to this repo (pyproject.toml installs it from ../hg_oap)
+git clone -b simon/extensions https://github.com/sijkelly/hg_oap.git ../hg_oap
+
+# 4. Create virtual environment with Python 3.12
 uv venv --python 3.12 .venv
 
-# 4. Install the project with all dependencies
+# 5. Install the project with all dependencies
 uv pip install -e ".[dev]"
 
-# 5. Verify installation
+# 6. Verify installation
 uv run pytest tests/ -q
 ```
+
+## Docker
+
+The image runs the OMS API as a non-root user and keeps all its state (order log, bookings, static data,
+entitlements, booked trade files) in `/data`. It needs the `hg_oap` fork checked out next to this repository,
+as in the setup above.
+
+```bash
+# Build and start the API on http://localhost:8000, with its data in a named volume
+docker compose up --build -d
+
+# Optional: load the demo data, then restart so the API picks up the seeded orders
+docker compose run --rm api python /app/scripts/seed_demo_data.py --db-dir /data
+docker compose restart api
+```
+
+Settings are read from `.env` if there is one (see `.env.example`), for example `AUTH_MODE=oidc` or
+`TRADE_KAFKA_TOPIC`. Without compose:
+
+```bash
+docker build --build-context hg_oap=../hg_oap -t hgraph-oms .
+docker run -p 8000:8000 -v oms-data:/data hgraph-oms
+```
+
+To run it with PostgreSQL for all order, reference and entitlement data:
+
+```bash
+POSTGRES_PASSWORD=choose-one docker compose -f compose.yaml -f compose.postgres.yaml up --build -d
+```
+
+The image is built for `linux/amd64`, because hgraph publishes Linux wheels for x86-64 only; on Apple Silicon
+it runs under emulation. Other commands run the same way, e.g. `docker run --rm hgraph-oms hgraph-tools --help`.
 
 ## CLI
 
@@ -72,6 +198,14 @@ hgraph-tools notify --file trade.json
 
 # Parse FpML XSD schema
 hgraph-tools parse-xsd --xsd path/to/fpml.xsd --output output.json
+
+# OMS API (REST + WebSocket) for the hgraph_oms_ui front end
+hgraph-tools serve --port 8000 --db-dir ./data/
+
+# Kafka subscribers for static data
+hgraph-tools party-subscribe --db-path party_data.db
+hgraph-tools portfolio-subscribe --db-path portfolio_data.db
+hgraph-tools credit-subscribe --db-path credit_data.db
 ```
 
 ## Project Structure
@@ -89,17 +223,15 @@ hgraph_platform_tools/
 │   ├── hgraph_trade_mapping/           # Field & instrument mappings
 │   └── fpml_xsd_reference_files/       # XSD parser and reference data
 │
+├── hgraph_api/                         # FastAPI OMS service (REST + WebSocket)
+├── hgraph_oms/                         # Order core: state machine, pre-trade checks, hgraph order book, engine
+├── hgraph_oap_adapter/                 # Adapters between hg_oap domain objects and the pipeline
 ├── hgraph_entitlements/                # Role-based access control
 ├── hgraph_notification/                # Email notifications (Jinja2 + SMTP)
-├── hgraph_static_admin/                # Static reference data (API + SQLite)
+├── hgraph_static_admin/                # Static reference data (SQLite stores + Kafka subscribers)
+├── scripts/                            # Demo data seeding
 │
 └── tests/                              # pytest suite (mirrors source layout)
-    ├── conftest.py
-    ├── hgraph_trade/
-    │   ├── hgraph_trade_booker/
-    │   ├── hgraph_trade_model/
-    │   └── hgraph_trade_mapping/
-    └── hgraph_entitlements/
 ```
 
 ## Development
@@ -113,6 +245,10 @@ uv pip install -e ".[messaging]"      # Kafka
 uv pip install -e ".[notification]"   # Jinja2 email templates
 uv pip install -e ".[database]"       # MongoDB
 uv pip install -e ".[web]"            # HTTP requests
+uv pip install -e ".[api]"            # FastAPI service and Claude order parsing
+uv pip install -e ".[ai]"             # MCP server for AI agents
+uv pip install -e ".[postgres]"       # PostgreSQL for the order core (DATABASE_URL)
+uv pip install -e ".[oap]"            # hg_oap domain library (from ../hg_oap)
 uv pip install -e ".[test]"           # pytest, mypy, black, coverage
 uv pip install -e ".[dev]"            # Everything
 ```
@@ -141,6 +277,9 @@ uv run black .
 # Type checking
 uv run mypy .
 ```
+
+The same three checks (Black, mypy, pytest) run in GitHub Actions on every pull request
+(`.github/workflows/ci.yml`).
 
 ### Configuration
 
