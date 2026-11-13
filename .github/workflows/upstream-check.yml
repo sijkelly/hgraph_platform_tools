@@ -44,14 +44,17 @@ jobs:
       - name: Record new versions
         id: after
         run: |
-          uv run --no-project python .github/scripts/locked_versions.py >> "$GITHUB_OUTPUT"
-          if git diff --quiet -- uv.lock; then
+          versions="$(uv run --no-project python .github/scripts/locked_versions.py)"
+          echo "$versions" >> "$GITHUB_OUTPUT"
+          new_hgraph="$(echo "$versions" | grep '^hgraph=' | cut -d= -f2)"
+          new_oap="$(echo "$versions" | grep '^hg_oap=' | cut -d= -f2)"
+          # Compare versions, not the file: a newer uv on the runner rewrites the
+          # lockfile's `revision` header even when nothing was upgraded.
+          if [[ "$new_hgraph" == "${{ steps.before.outputs.hgraph }}" && "$new_oap" == "${{ steps.before.outputs.hg_oap }}" ]]; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
-          new_hgraph="$(grep '^hgraph=' "$GITHUB_OUTPUT" | tail -1 | cut -d= -f2)"
-          new_oap="$(grep '^hg_oap=' "$GITHUB_OUTPUT" | tail -1 | cut -d= -f2)"
           if [[ "$new_hgraph" != "${{ steps.before.outputs.hgraph }}" ]]; then
             echo "title=Upgrade hgraph to $new_hgraph" >> "$GITHUB_OUTPUT"
           else
