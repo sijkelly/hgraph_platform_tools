@@ -12,6 +12,8 @@ on:
   schedule:
     - cron: "0 7 * * 1" # Mondays 07:00 UTC, after upstream-check
   workflow_dispatch:
+  push:
+    branches: [chore/upstream-ci]  # TEMP: trial run before merge
 
 concurrency:
   group: hg-oap-fork-check
