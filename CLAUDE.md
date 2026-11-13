@@ -106,6 +106,7 @@ hgraph_platform_tools/
 ├── cli.py                              # Unified CLI entry point (hgraph-tools)
 ├── secure_config.py                    # Centralised env-var config
 ├── pyproject.toml                      # PEP 621 project metadata (uv/hatch)
+├── Dockerfile, compose.yaml            # Container image for the API (needs ../hg_oap as a build context)
 ├── CLAUDE.md                           # This file
 │
 ├── hgraph_trade/                       # Core trade processing

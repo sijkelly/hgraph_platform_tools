@@ -114,6 +114,32 @@ uv pip install -e ".[dev]"
 uv run pytest tests/ -q
 ```
 
+## Docker
+
+The image runs the OMS API as a non-root user and keeps all its state (order log, bookings, static data,
+entitlements, booked trade files) in `/data`. It needs the `hg_oap` fork checked out next to this repository,
+as in the setup above.
+
+```bash
+# Build and start the API on http://localhost:8000, with its data in a named volume
+docker compose up --build -d
+
+# Optional: load the demo data, then restart so the API picks up the seeded orders
+docker compose run --rm api python /app/scripts/seed_demo_data.py --db-dir /data
+docker compose restart api
+```
+
+Settings are read from `.env` if there is one (see `.env.example`), for example `AUTH_MODE=oidc` or
+`TRADE_KAFKA_TOPIC`. Without compose:
+
+```bash
+docker build --build-context hg_oap=../hg_oap -t hgraph-oms .
+docker run -p 8000:8000 -v oms-data:/data hgraph-oms
+```
+
+The image is built for `linux/amd64`, because hgraph publishes Linux wheels for x86-64 only; on Apple Silicon
+it runs under emulation. Other commands run the same way, e.g. `docker run --rm hgraph-oms hgraph-tools --help`.
+
 ## CLI
 
 The project provides a unified CLI via `hgraph-tools`:
