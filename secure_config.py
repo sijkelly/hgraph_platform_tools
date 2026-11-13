@@ -71,6 +71,13 @@ def load_secure_config() -> Dict[str, str]:
         "TRADE_OUTPUT_DIR": os.getenv("TRADE_OUTPUT_DIR", ""),
         # Kafka topic booked trades are published to; empty disables delivery
         "TRADE_KAFKA_TOPIC": os.getenv("TRADE_KAFKA_TOPIC", ""),
+        # --- Tenancy ---
+        # The customer this deployment serves; empty for a single-tenant deployment
+        "TENANT_ID": os.getenv("TENANT_ID", ""),
+        # PostgreSQL schema for the order data (default: tenant_<TENANT_ID> when a tenant is set)
+        "DATABASE_SCHEMA": os.getenv("DATABASE_SCHEMA", ""),
+        # Token claim that must equal TENANT_ID (e.g. tid, org_id) when tenants share an identity provider
+        "OIDC_TENANT_CLAIM": os.getenv("OIDC_TENANT_CLAIM", ""),
         # --- Order core database ---
         # postgresql://user:password@host:5432/dbname; empty keeps the order log, bookings and
         # proposals in SQLite files in the API's database directory

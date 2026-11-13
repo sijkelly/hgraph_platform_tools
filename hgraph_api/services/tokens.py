@@ -21,6 +21,7 @@ from typing import Any, Callable
 from urllib.parse import urlparse
 
 from hgraph_api.config import api_config
+from hgraph_api.services.tenancy import tenant_id
 
 __all__ = (
     "HEADER",
@@ -67,6 +68,10 @@ class TokenVerifier:
     :param user_claim: The claim holding the user ID.
     :param jwks_url: Where the provider publishes its signing keys.  If empty, it is read from the
         provider's discovery document on first use.
+    :param tenant_claim: A claim naming the organisation the user belongs to (for example ``tid`` or
+        ``org_id``).  If given, it must equal ``tenant``, so that a token the same provider issued
+        to another organisation is refused.
+    :param tenant: The organisation this API serves; required with ``tenant_claim``.
     :param key_resolver: Returns the verification key for a token, replacing the JWKS lookup.
     :param leeway: Clock skew, in seconds, tolerated when checking expiry.
     """
@@ -78,16 +83,22 @@ class TokenVerifier:
         audience: str,
         user_claim: str = "sub",
         jwks_url: str = "",
+        tenant_claim: str = "",
+        tenant: str = "",
         key_resolver: Callable[[str], Any] | None = None,
         leeway: float = 30.0,
     ):
         if not issuer or not audience:
             raise ValueError("Token verification needs both an issuer and an audience")
+        if tenant_claim and not tenant:
+            raise ValueError("a tenant claim can only be checked when TENANT_ID is set")
         if key_resolver is None:
             _require_http_url(jwks_url or issuer, "The JWKS URL" if jwks_url else "The issuer")
         self.issuer = issuer
         self.audience = audience
         self.user_claim = user_claim or "sub"
+        self.tenant_claim = tenant_claim
+        self.tenant = tenant
         self.leeway = leeway
         self._jwks_url = jwks_url
         self._key_resolver = key_resolver
@@ -124,6 +135,9 @@ class TokenVerifier:
         except jwt.PyJWTError as exc:
             logger.info("Rejected token: %s: %s", type(exc).__name__, exc)
             raise TokenError("the token could not be verified") from None
+
+        if self.tenant_claim and claims.get(self.tenant_claim) != self.tenant:
+            raise TokenError("the token belongs to a different organisation")
 
         user_id = claims.get(self.user_claim)
         if not isinstance(user_id, str) or not user_id.strip():
@@ -180,6 +194,8 @@ def verifier_from_settings() -> TokenVerifier:
             audience=_setting("OIDC_AUDIENCE"),
             user_claim=_setting("OIDC_USER_CLAIM", "sub"),
             jwks_url=_setting("OIDC_JWKS_URL"),
+            tenant_claim=_setting("OIDC_TENANT_CLAIM"),
+            tenant=tenant_id(),
         )
     except ValueError as exc:
-        raise RuntimeError(f"AUTH_MODE=oidc needs OIDC_ISSUER and OIDC_AUDIENCE: {exc}") from exc
+        raise RuntimeError(f"AUTH_MODE=oidc is not fully configured: {exc}") from exc

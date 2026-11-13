@@ -36,6 +36,28 @@ def oms_db(request, tmp_path):
 
 
 @pytest.fixture
+def postgres_schemas():
+    """Returns ``(url, [schema, ...])``: a PostgreSQL URL and unused schema names, dropped afterwards.
+
+    Skipped unless ``TEST_POSTGRES_URL`` is set.  The schemas are not created; code under test does that.
+    """
+    url = os.getenv("TEST_POSTGRES_URL")
+    if not url:
+        pytest.skip("TEST_POSTGRES_URL is not set")
+    psycopg = pytest.importorskip("psycopg")
+
+    run = uuid.uuid4().hex[:12]
+    schemas = [f"tenant_{run}_{name}" for name in ("a", "b")]
+    try:
+        yield url, schemas
+    finally:
+        close_databases()
+        with psycopg.connect(url, autocommit=True) as connection:
+            for schema in schemas:
+                connection.execute(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE')
+
+
+@pytest.fixture
 def base_trade_data():
     return {
         "trade_id": "TEST-001",

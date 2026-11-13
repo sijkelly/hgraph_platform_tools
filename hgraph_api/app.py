@@ -16,6 +16,7 @@ from hgraph_api.config import api_config
 from hgraph_api.routers import credit, orders, parties, portfolios, proposals, entitlements, health
 from hgraph_api.middleware.auth import AuthMiddleware
 from hgraph_api.services.order_engine import stop_order_engine
+from hgraph_api.services.tenancy import tenant_id
 from hgraph_api.services.tokens import HEADER, auth_settings
 from hgraph_api.websockets import credit_ws, orders_ws
 from hgraph_oms.db import close_databases
@@ -41,6 +42,11 @@ def create_app() -> FastAPI:
         version="0.1.0",
         lifespan=_lifespan,
     )
+
+    # The customer this deployment serves; empty for a single-tenant deployment
+    app.state.tenant_id = tenant_id()
+    if app.state.tenant_id:
+        logger.info("Serving tenant '%s'", app.state.tenant_id)
 
     # Authentication mode: "header" trusts X-User-Id (development); "oidc" requires bearer tokens.
     # Added before CORS so that CORS wraps it and error responses carry the CORS headers.

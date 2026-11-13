@@ -18,13 +18,14 @@ the stores:
 
 import logging
 import queue
+import re
 import sqlite3
 import threading
 from contextlib import contextmanager
 from typing import Any, Iterable, Iterator, Sequence
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, urlsplit
 
-__all__ = ("SQLITE", "POSTGRES", "Transaction", "Database", "get_database", "close_databases")
+__all__ = ("SQLITE", "POSTGRES", "Transaction", "Database", "with_schema", "get_database", "close_databases")
 
 logger = logging.getLogger(__name__)
 
@@ -35,8 +36,30 @@ _POSTGRES_SCHEMES = ("postgresql", "postgres")
 _DEFAULT_POOL_SIZE = 5
 _POOL_TIMEOUT = 30.0
 
-# Advisory locks are per database; including the schema keeps separate schemas independent
-_LOCK_KEY_SQL = "hashtextextended('hgraph_oms:' || current_schema() || ':' || ?, 0)"
+# Advisory locks are per database; including the schema keeps separate schemas independent.
+# Parameters: the schema the connection was opened on (or NULL), then the lock's name.
+_LOCK_KEY_SQL = "hashtextextended('hgraph_oms:' || COALESCE(?::text, current_schema(), '') || ':' || ?::text, 0)"
+
+_SCHEMA_NAME = re.compile(r"^[a-z_][a-z0-9_]{0,62}$")
+_SEARCH_PATH_OPTION = re.compile(r"-c\s*search_path=([A-Za-z0-9_]+)\s*$")
+
+
+def with_schema(target: str, schema: str) -> str:
+    """Return ``target`` narrowed to one PostgreSQL schema, which is created when first used.
+
+    This is how several tenants share a PostgreSQL database without seeing each other's data.
+    A SQLite target is returned unchanged: there, each tenant has its own files.
+
+    :raises ValueError: If the schema name is not a plain lower-case identifier, or the URL
+        already sets connection options.
+    """
+    if not schema or urlsplit(target).scheme not in _POSTGRES_SCHEMES:
+        return target
+    if not _SCHEMA_NAME.match(schema):
+        raise ValueError(f"Schema '{schema}' must be lower-case letters, digits and '_', not starting with a digit")
+    if "options" in parse_qs(urlsplit(target).query):
+        raise ValueError("The database URL already sets connection options; give the schema there instead")
+    return f"{target}{'&' if urlsplit(target).query else '?'}options=-csearch_path%3D{schema}"
 
 
 class Transaction:
@@ -78,6 +101,12 @@ class Database:
             raise ValueError("A database path or URL is required")
         self.target = target
         self.dialect = POSTGRES if urlsplit(target).scheme in _POSTGRES_SCHEMES else SQLITE
+        #: The PostgreSQL schema the target is narrowed to (see :func:`with_schema`), if any
+        self.schema = ""
+        if self.dialect == POSTGRES:
+            options = parse_qs(urlsplit(target).query).get("options", [""])[-1]
+            match = _SEARCH_PATH_OPTION.search(options)
+            self.schema = match.group(1) if match else ""
         self._pool: queue.LifoQueue = queue.LifoQueue()
         self._slots = threading.BoundedSemaphore(pool_size)
         self._locks: dict[str, Any] = {}
@@ -93,7 +122,8 @@ class Database:
         if self.dialect == SQLITE:
             return self.target
         parts = urlsplit(self.target)
-        return f"postgresql://{parts.hostname or ''}{':' + str(parts.port) if parts.port else ''}{parts.path}"
+        location = f"postgresql://{parts.hostname or ''}{':' + str(parts.port) if parts.port else ''}{parts.path}"
+        return f"{location} (schema {self.schema})" if self.schema else location
 
     @property
     def seq_column(self) -> str:
@@ -178,7 +208,9 @@ class Database:
                 tx.execute("PRAGMA journal_mode = WAL")
             else:
                 # Two processes creating the same table at once would otherwise collide
-                tx.execute(f"SELECT pg_advisory_xact_lock({_LOCK_KEY_SQL})", ("create-tables",))
+                tx.execute(f"SELECT pg_advisory_xact_lock({_LOCK_KEY_SQL})", (self.schema or None, "create-tables"))
+                if self.schema:
+                    tx.execute(f'CREATE SCHEMA IF NOT EXISTS "{self.schema}"')
             for statement in statements:
                 tx.execute(statement)
 
@@ -202,7 +234,7 @@ class Database:
         connection = self._connect(autocommit=True)
         try:
             row = connection.execute(
-                self.sql(f"SELECT pg_try_advisory_lock({_LOCK_KEY_SQL}) AS locked"), (name,)
+                self.sql(f"SELECT pg_try_advisory_lock({_LOCK_KEY_SQL}) AS locked"), (self.schema or None, name)
             ).fetchone()
         except BaseException:
             connection.close()

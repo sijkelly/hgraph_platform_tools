@@ -58,6 +58,19 @@ notification pipelines for commodity and financial trade processing.
 - **Still SQLite** — Reference data (parties, portfolios, credit) and entitlements. These are fed from
   upstream systems and stay in files in the database directory.
 
+### Tenancy
+- **One deployment per customer** — Each customer gets its own API process, and with it its own order engine,
+  order log, reference data and entitlements. Nothing in one deployment can read another's orders. Set
+  `TENANT_ID` to name the customer a deployment serves; leave it empty for a single-tenant installation.
+- **Shared PostgreSQL** — Customers can share one database server. With `TENANT_ID=acme` the order data lives
+  in the schema `tenant_acme` (created on first start; override with `DATABASE_SCHEMA`), and the engine's
+  single-writer lock is per schema, so each customer's engine runs independently.
+- **Shared identity provider** — If customers sign in through the same provider, set `OIDC_TENANT_CLAIM` to
+  the claim that names the user's organisation (`tid` for Entra ID, `org_id` for Auth0). A token whose claim
+  is not this deployment's `TENANT_ID` is refused, even though the provider signed it.
+- **Per customer, set separately** — `API_DB_DIR` (or a separate Docker volume), `TRADE_KAFKA_TOPIC`,
+  `INTERNAL_PARTY_ID` and `ENTITLEMENTS_DB_PATH`. Two customers must not share a trade topic.
+
 ### Authentication
 - **Development (`AUTH_MODE=header`, the default)** — The caller is whoever the `X-User-Id` header says.
   Nothing verifies it, so use this only on a developer machine.

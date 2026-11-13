@@ -33,6 +33,7 @@ def get_current_user(request: Request) -> dict:
         "role": role,
         "allowed_actions": sorted(get_allowed_actions(role)) if role else [],
         "auth_mode": getattr(request.app.state, "auth_mode", "header"),
+        "tenant_id": getattr(request.app.state, "tenant_id", ""),
     }
 
 

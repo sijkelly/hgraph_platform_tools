@@ -141,6 +141,7 @@ hgraph_platform_tools/
 │   ├── mcp_server.py                   # MCP tools for AI agents (read + propose only)
 │   ├── client_auth.py                  # Bearer-token sign-in for API clients (MCP server)
 │   ├── services/tokens.py              # OIDC access-token verification
+│   ├── services/tenancy.py             # TENANT_ID: one deployment per customer, schema per tenant
 │   └── middleware/auth.py              # Caller identity (X-User-Id or OIDC token) + entitlements check
 ├── hgraph_oms/                         # Order core (hgraph_api's order endpoints run on it)
 │   ├── model.py                        # Immutable messages, snapshots, responses
