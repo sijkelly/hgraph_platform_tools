@@ -1,0 +1,129 @@
+name: Upstream check
+
+# Weekly: bump hgraph (PyPI, released every few days) and hg-oap (fork branch
+# simon/extensions) in uv.lock, run the suite, then either open/refresh an
+# upgrade PR (green) or open/refresh an issue with the failure (red).
+# Tracks *releases* of hgraph, not hhenson/hgraph main.
+
+on:
+  schedule:
+    - cron: "0 6 * * 1" # Mondays 06:00 UTC
+  workflow_dispatch:
+
+concurrency:
+  group: upstream-check
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  upgrade:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+
+      - name: Record current versions
+        id: before
+        run: uv run --no-project python .github/scripts/locked_versions.py >> "$GITHUB_OUTPUT"
+
+      - name: Upgrade hgraph and hg-oap in uv.lock
+        run: uv lock --upgrade-package hgraph --upgrade-package hg-oap
+
+      - name: Record new versions
+        id: after
+        run: |
+          versions="$(uv run --no-project python .github/scripts/locked_versions.py)"
+          echo "$versions" >> "$GITHUB_OUTPUT"
+          new_hgraph="$(echo "$versions" | grep '^hgraph=' | cut -d= -f2)"
+          new_oap="$(echo "$versions" | grep '^hg_oap=' | cut -d= -f2)"
+          # Compare versions, not the file: a newer uv on the runner rewrites the
+          # lockfile's `revision` header even when nothing was upgraded.
+          if [[ "$new_hgraph" == "${{ steps.before.outputs.hgraph }}" && "$new_oap" == "${{ steps.before.outputs.hg_oap }}" ]]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+          if [[ "$new_hgraph" != "${{ steps.before.outputs.hgraph }}" ]]; then
+            echo "title=Upgrade hgraph to $new_hgraph" >> "$GITHUB_OUTPUT"
+          else
+            echo "title=Upgrade hg-oap to $new_oap" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Nothing to do
+        if: steps.after.outputs.changed == 'false'
+        run: |
+          echo "### Up to date" >> "$GITHUB_STEP_SUMMARY"
+          echo "hgraph ${{ steps.before.outputs.hgraph }}, hg-oap ${{ steps.before.outputs.hg_oap }}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Install upgraded dependencies
+        if: steps.after.outputs.changed == 'true'
+        run: uv sync --locked --extra dev
+
+      - name: Run tests
+        id: tests
+        if: steps.after.outputs.changed == 'true'
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          uv run --no-sync pytest tests/ -q -ra 2>&1 | tee pytest.log
+
+      - name: Open or update upgrade PR
+        if: steps.after.outputs.changed == 'true' && steps.tests.outcome == 'success'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: automation/upstream-upgrade
+          delete-branch: true
+          add-paths: uv.lock
+          commit-message: ${{ steps.after.outputs.title }}
+          title: ${{ steps.after.outputs.title }}
+          labels: dependencies
+          body: |
+            Automated weekly upstream check: `uv lock --upgrade-package hgraph --upgrade-package hg-oap`.
+
+            | Package | Before | After |
+            |---|---|---|
+            | hgraph | ${{ steps.before.outputs.hgraph }} | ${{ steps.after.outputs.hgraph }} |
+            | hg-oap (`sijkelly/hg_oap@simon/extensions`) | ${{ steps.before.outputs.hg_oap }} | ${{ steps.after.outputs.hg_oap }} |
+
+            The full test suite passed against these versions in
+            [this run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).
+            (PRs opened with the workflow token do not trigger `tests.yml` themselves.)
+
+      - name: Open or update failure issue
+        if: steps.after.outputs.changed == 'true' && steps.tests.outcome != 'success'
+        run: |
+          {
+            echo "The weekly upstream check failed after upgrading:"
+            echo
+            echo "| Package | Before | After |"
+            echo "|---|---|---|"
+            echo "| hgraph | ${{ steps.before.outputs.hgraph }} | ${{ steps.after.outputs.hgraph }} |"
+            echo "| hg-oap (\`sijkelly/hg_oap@simon/extensions\`) | ${{ steps.before.outputs.hg_oap }} | ${{ steps.after.outputs.hg_oap }} |"
+            echo
+            echo "Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            echo
+            echo "Reproduce locally:"
+            echo '```bash'
+            echo "uv lock --upgrade-package hgraph --upgrade-package hg-oap && uv sync --extra dev && uv run pytest tests/ -q"
+            echo '```'
+            echo
+            echo "<details><summary>pytest output (tail)</summary>"
+            echo
+            echo '```'
+            tail -c 50000 pytest.log 2>/dev/null || echo "(no pytest output — install step may have failed)"
+            echo '```'
+            echo "</details>"
+          } > issue.md
+          .github/scripts/upsert-issue.sh upstream-break \
+            "Upstream check failing: ${{ steps.after.outputs.title }}" issue.md
+          exit 1

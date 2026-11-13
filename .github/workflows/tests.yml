@@ -1,0 +1,37 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+          enable-cache: true
+
+      # --locked fails the build if pyproject.toml and uv.lock disagree, rather than
+      # silently re-resolving to something nobody reviewed.
+      - name: Install dependencies
+        run: uv sync --locked --extra dev
+
+      - name: Report upstream versions under test
+        run: uv run --no-sync python -c "import importlib.metadata as m; print('hgraph', m.version('hgraph')); print('hg-oap', m.version('hg-oap'))"
+
+      - name: Run tests
+        run: uv run --no-sync pytest tests/ -q
