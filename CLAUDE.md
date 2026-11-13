@@ -163,6 +163,7 @@ hgraph_platform_tools/
 ├── hgraph_notification/                # Email notifications
 ├── hgraph_static_admin/                # Party, portfolio and credit stores + Kafka subscribers
 ├── scripts/seed_demo_data.py           # Demo data for the API
+├── scripts/eval_order_parser.py        # Order parser evaluation (cases in evals/order_parser/)
 │
 └── tests/                              # pytest suite (mirrors source layout)
     └── conftest.py                     # Shared fixtures

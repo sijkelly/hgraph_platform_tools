@@ -169,6 +169,7 @@ def parse_order_text(
     counterparties: Iterable[str] = (),
     products: Iterable[ProductSpec] = DEFAULT_PRODUCTS,
     today: date | None = None,
+    usage: dict[str, int] | None = None,
 ) -> dict[str, Any]:
     """Parse free text into structured order fields using Claude.
 
@@ -177,6 +178,7 @@ def parse_order_text(
     :param counterparties: Known counterparty symbols, so names in the text can be matched to them.
     :param products: Product reference data, so instrument names come back in bookable form.
     :param today: The date used to resolve periods given without a year; defaults to today.
+    :param usage: If given, the request's ``input_tokens`` and ``output_tokens`` are added to it.
     :returns: Dict of the fields found (each with ``value`` and ``confidence``), plus ``notes``,
         ``warnings`` from :func:`review_parsed_order` and the ``raw_text``.
     :raises RuntimeError: If the model cannot be reached, declines, or its reply is unusable.
@@ -205,6 +207,10 @@ def parse_order_text(
     except Exception as exc:
         logger.error("Order parsing request failed: %s", exc)
         raise RuntimeError(f"Order parsing is unavailable: {type(exc).__name__}") from exc
+
+    if usage is not None:
+        for name in ("input_tokens", "output_tokens"):
+            usage[name] = usage.get(name, 0) + int(getattr(getattr(response, "usage", None), name, 0) or 0)
 
     stop_reason = getattr(response, "stop_reason", None)
     if stop_reason == "refusal":

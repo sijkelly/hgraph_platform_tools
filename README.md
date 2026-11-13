@@ -38,6 +38,9 @@ notification pipelines for commodity and financial trade processing.
   fields with a confidence each, using the Claude API with a schema-enforced reply. The result carries
   `warnings` for anything that would stop the order submitting or its trades booking. The model defaults to
   `claude-opus-5-5`; set `ORDER_PARSER_MODEL` to change it.
+- **Parser evaluation** — `uv run python scripts/eval_order_parser.py --dry-run` lists the labelled messages
+  in `evals/order_parser/`; with `--yes` it runs them through the parser and reports accuracy per field. The
+  shipped cases are synthetic; see `evals/order_parser/README.md`.
 - **Proposals, confirmed by a person** — An agent drafts an order with `POST /api/v1/proposals`, which changes
   nothing in the order book. A person confirms it (`POST /api/v1/proposals/{id}/confirm`), which submits the
   order under their name through the normal credit check, or dismisses it. The author of a proposal cannot
