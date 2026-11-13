@@ -9,8 +9,6 @@ on:
   schedule:
     - cron: "0 6 * * 1" # Mondays 06:00 UTC
   workflow_dispatch:
-  push:
-    branches: [chore/upstream-ci]  # TEMP: trial run before merge
 
 concurrency:
   group: upstream-check
