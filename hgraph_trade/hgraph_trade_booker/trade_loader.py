@@ -12,7 +12,7 @@ import os
 import json
 import re
 import logging
-from typing import Dict, Any
+from typing import Any, Dict, Iterable
 
 from hgraph_trade.hgraph_trade_mapping.instrument_mappings import map_pricing_instrument
 
@@ -30,12 +30,12 @@ __all__ = (
 logger = logging.getLogger(__name__)
 
 
-def validate_required_keys(file_content: str, required_keys: Dict[str, Any]) -> None:
+def validate_required_keys(file_content: str, required_keys: Iterable[str]) -> None:
     """
     Validate that all required top-level keys are present in the file content.
 
     :param file_content: Raw file content as a string.
-    :param required_keys: A list or dict of required keys as strings.
+    :param required_keys: The required key names.
     :raises ValueError: If any required key is missing.
     """
     for key in required_keys:

@@ -54,9 +54,7 @@ async def orders_websocket(websocket: WebSocket):
             orders = _snapshot_orders(db_path)
 
             if orders != prev_orders or prev_orders is None:
-                await websocket.send_text(
-                    json.dumps({"type": "orders.snapshot", "data": orders})
-                )
+                await websocket.send_text(json.dumps({"type": "orders.snapshot", "data": orders}))
                 prev_orders = orders
 
             try:

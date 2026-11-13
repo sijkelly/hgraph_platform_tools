@@ -241,9 +241,7 @@ def get_all_credit_limits(db_path: str) -> List[CreditLimit]:
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     try:
-        rows = conn.execute(
-            "SELECT * FROM credit_limits ORDER BY counterparty_symbol, limit_type"
-        ).fetchall()
+        rows = conn.execute("SELECT * FROM credit_limits ORDER BY counterparty_symbol, limit_type").fetchall()
     finally:
         conn.close()
 
@@ -370,9 +368,7 @@ def get_all_credit_utilizations(db_path: str) -> List[CreditUtilization]:
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     try:
-        rows = conn.execute(
-            "SELECT * FROM credit_utilizations ORDER BY counterparty_symbol"
-        ).fetchall()
+        rows = conn.execute("SELECT * FROM credit_utilizations ORDER BY counterparty_symbol").fetchall()
     finally:
         conn.close()
 

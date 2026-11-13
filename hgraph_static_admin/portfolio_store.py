@@ -163,9 +163,7 @@ def get_portfolio(db_path: str, symbol: str) -> PortfolioInfo | None:
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     try:
-        row = conn.execute(
-            "SELECT * FROM portfolios WHERE symbol = ?", (symbol,)
-        ).fetchone()
+        row = conn.execute("SELECT * FROM portfolios WHERE symbol = ?", (symbol,)).fetchone()
     finally:
         conn.close()
 
@@ -193,9 +191,7 @@ def get_all_portfolios(db_path: str) -> List[PortfolioInfo]:
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     try:
-        rows = conn.execute(
-            "SELECT * FROM portfolios ORDER BY symbol"
-        ).fetchall()
+        rows = conn.execute("SELECT * FROM portfolios ORDER BY symbol").fetchall()
     finally:
         conn.close()
 
@@ -223,9 +219,7 @@ def delete_portfolio(db_path: str, symbol: str) -> bool:
     """
     conn = sqlite3.connect(db_path)
     try:
-        cursor = conn.execute(
-            "DELETE FROM portfolios WHERE symbol = ?", (symbol,)
-        )
+        cursor = conn.execute("DELETE FROM portfolios WHERE symbol = ?", (symbol,))
         conn.commit()
         return cursor.rowcount > 0
     finally:
@@ -288,9 +282,7 @@ def get_book(db_path: str, symbol: str) -> BookInfo | None:
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     try:
-        row = conn.execute(
-            "SELECT * FROM books WHERE symbol = ?", (symbol,)
-        ).fetchone()
+        row = conn.execute("SELECT * FROM books WHERE symbol = ?", (symbol,)).fetchone()
     finally:
         conn.close()
 
@@ -318,9 +310,7 @@ def get_all_books(db_path: str) -> List[BookInfo]:
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     try:
-        rows = conn.execute(
-            "SELECT * FROM books ORDER BY symbol"
-        ).fetchall()
+        rows = conn.execute("SELECT * FROM books ORDER BY symbol").fetchall()
     finally:
         conn.close()
 
@@ -348,9 +338,7 @@ def delete_book(db_path: str, symbol: str) -> bool:
     """
     conn = sqlite3.connect(db_path)
     try:
-        cursor = conn.execute(
-            "DELETE FROM books WHERE symbol = ?", (symbol,)
-        )
+        cursor = conn.execute("DELETE FROM books WHERE symbol = ?", (symbol,))
         conn.commit()
         return cursor.rowcount > 0
     finally:

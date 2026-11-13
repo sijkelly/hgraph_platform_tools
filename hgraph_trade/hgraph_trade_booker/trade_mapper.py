@@ -32,7 +32,7 @@ from hgraph_trade.hgraph_trade_model import (
     get_instrument_mapping,
 )
 from hgraph_trade.hgraph_trade_mapping.instrument_mappings import map_pricing_instrument
-from decomposition import decompose_instrument
+from hgraph_trade.hgraph_trade_booker.decomposition import decompose_instrument
 
 __all__ = ("map_trade_to_model",)
 
@@ -63,7 +63,7 @@ _INSTRUMENT_CREATORS = {
 def _build_single_message(
     single_trade_data: Dict[str, Any],
     instrument_type: str,
-    sub_instrument_type: str,
+    sub_instrument_type: str | None,
 ) -> Dict[str, Any]:
     """
     Build one fully assembled trade message from a single (possibly decomposed) trade.

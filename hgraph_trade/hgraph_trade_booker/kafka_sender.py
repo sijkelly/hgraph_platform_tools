@@ -47,7 +47,7 @@ class KafkaSender:
 
     def __init__(
         self,
-        bootstrap_servers: str = None,
+        bootstrap_servers: str | None = None,
         max_retries: int = DEFAULT_MAX_RETRIES,
         retry_backoff: float = DEFAULT_RETRY_BACKOFF,
     ):

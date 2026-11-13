@@ -93,15 +93,11 @@ async def credit_websocket(websocket: WebSocket):
 
             # Send on first connect or when data changes
             if limits != prev_limits or prev_limits is None:
-                await websocket.send_text(
-                    json.dumps({"type": "credit.limits", "data": limits})
-                )
+                await websocket.send_text(json.dumps({"type": "credit.limits", "data": limits}))
                 prev_limits = limits
 
             if utilizations != prev_utilizations or prev_utilizations is None:
-                await websocket.send_text(
-                    json.dumps({"type": "credit.utilizations", "data": utilizations})
-                )
+                await websocket.send_text(json.dumps({"type": "credit.utilizations", "data": utilizations}))
                 prev_utilizations = utilizations
 
             # Also handle incoming messages (ping/pong, commands)

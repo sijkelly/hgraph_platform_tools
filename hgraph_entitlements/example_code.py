@@ -80,7 +80,7 @@ def dispatch_event(event_name: str, payload: Any) -> None:
             # In a real system, each handler would call dispatch_event as needed.
 
 
-def get_db_connection(db_path: str = None) -> sqlite3.Connection:
+def get_db_connection(db_path: str | None = None) -> sqlite3.Connection:
     """Create and return a connection to the SQLite database.
 
     :param db_path: Path to the SQLite database file.
@@ -152,7 +152,7 @@ def permission_event_handler(payload: Dict[str, Any]) -> None:
     user_id = payload.get("user_id")
     role = payload.get("role")
     # In a real system, additional propagation (like cache refresh or audit logging) would occur.
-    logger.info("User '%s' role updated to '%s'. Allowed actions: %s", user_id, role, STATIC_ROLES.get(role))
+    logger.info("User '%s' role updated to '%s'. Allowed actions: %s", user_id, role, STATIC_ROLES.get(role or ""))
 
 
 def setup_cli() -> argparse.Namespace:

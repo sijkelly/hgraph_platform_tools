@@ -23,7 +23,6 @@ from hgraph_static_admin.portfolio_kafka_subscriber import (
     parse_portfolio_message,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -298,12 +297,15 @@ def test_full_portfolio_round_trip(subscriber, db_path):
 
 def test_full_book_round_trip(subscriber, db_path):
     # Create portfolio first
-    subscriber.process_message("portfolio.portfolio", {
-        "action": "UPSERT",
-        "symbol": "POWER-TRADING",
-        "name": "Power Trading",
-        "portfolio_type": "Trading",
-    })
+    subscriber.process_message(
+        "portfolio.portfolio",
+        {
+            "action": "UPSERT",
+            "symbol": "POWER-TRADING",
+            "name": "Power Trading",
+            "portfolio_type": "Trading",
+        },
+    )
     msg = {
         "action": "UPSERT",
         "symbol": "POWER-BOOK-1",

@@ -1,10 +1,21 @@
 # hgraph_platform_tools
 
 Platform tooling built on top of the [hgraph](https://github.com/hhenson/hgraph) forward propagation graph framework.
-Provides trade booking, entitlements management, static data administration, and notification pipelines
-for commodity and financial trade processing.
+Provides an order management API, trade booking, entitlements management, static data administration, and
+notification pipelines for commodity and financial trade processing.
 
 ## Features
+
+### Order Management API (`hgraph_api`)
+- **REST + WebSocket** — FastAPI service for orders, credit, parties, portfolios and entitlements
+- **Pre-trade credit check** — Orders are rejected when they would breach a counterparty credit limit
+- **Natural-language order entry** — Free text or pasted chat parsed into order fields via the Claude API
+- **UI** — Served to the [hgraph_oms_ui](https://github.com/sijkelly/hgraph_oms_ui) React front end
+
+### hg_oap Adapters (`hgraph_oap_adapter`)
+- **Domain adapters** — Convert `hg_oap` swaps, parties, order lifecycle events and regulatory
+  reports into booking-pipeline and data-lake records
+- **EV rates** — Kafka subscriber and SQLite store for sales expected-value rates
 
 ### Trade Booking Pipeline
 - **Commodity instruments** — Swap (fixed/float and float/float), Option, Forward, Future, Swaption, Physical (gas, bullion)
@@ -36,16 +47,19 @@ for commodity and financial trade processing.
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # 2. Clone the repository
-git clone https://github.com/your-repo/hgraph_platform_tools.git
+git clone https://github.com/sijkelly/hgraph_platform_tools.git
 cd hgraph_platform_tools
 
-# 3. Create virtual environment with Python 3.12
+# 3. Clone the hg_oap fork next to this repo (pyproject.toml installs it from ../hg_oap)
+git clone -b simon/extensions https://github.com/sijkelly/hg_oap.git ../hg_oap
+
+# 4. Create virtual environment with Python 3.12
 uv venv --python 3.12 .venv
 
-# 4. Install the project with all dependencies
+# 5. Install the project with all dependencies
 uv pip install -e ".[dev]"
 
-# 5. Verify installation
+# 6. Verify installation
 uv run pytest tests/ -q
 ```
 
@@ -72,6 +86,14 @@ hgraph-tools notify --file trade.json
 
 # Parse FpML XSD schema
 hgraph-tools parse-xsd --xsd path/to/fpml.xsd --output output.json
+
+# OMS API (REST + WebSocket) for the hgraph_oms_ui front end
+hgraph-tools serve --port 8000 --db-dir ./data/
+
+# Kafka subscribers for static data
+hgraph-tools party-subscribe --db-path party_data.db
+hgraph-tools portfolio-subscribe --db-path portfolio_data.db
+hgraph-tools credit-subscribe --db-path credit_data.db
 ```
 
 ## Project Structure
@@ -89,17 +111,14 @@ hgraph_platform_tools/
 │   ├── hgraph_trade_mapping/           # Field & instrument mappings
 │   └── fpml_xsd_reference_files/       # XSD parser and reference data
 │
+├── hgraph_api/                         # FastAPI OMS service (REST + WebSocket)
+├── hgraph_oap_adapter/                 # Adapters between hg_oap domain objects and the pipeline
 ├── hgraph_entitlements/                # Role-based access control
 ├── hgraph_notification/                # Email notifications (Jinja2 + SMTP)
-├── hgraph_static_admin/                # Static reference data (API + SQLite)
+├── hgraph_static_admin/                # Static reference data (SQLite stores + Kafka subscribers)
+├── scripts/                            # Demo data seeding
 │
 └── tests/                              # pytest suite (mirrors source layout)
-    ├── conftest.py
-    ├── hgraph_trade/
-    │   ├── hgraph_trade_booker/
-    │   ├── hgraph_trade_model/
-    │   └── hgraph_trade_mapping/
-    └── hgraph_entitlements/
 ```
 
 ## Development
@@ -113,6 +132,8 @@ uv pip install -e ".[messaging]"      # Kafka
 uv pip install -e ".[notification]"   # Jinja2 email templates
 uv pip install -e ".[database]"       # MongoDB
 uv pip install -e ".[web]"            # HTTP requests
+uv pip install -e ".[api]"            # FastAPI service and Claude order parsing
+uv pip install -e ".[oap]"            # hg_oap domain library (from ../hg_oap)
 uv pip install -e ".[test]"           # pytest, mypy, black, coverage
 uv pip install -e ".[dev]"            # Everything
 ```
@@ -141,6 +162,9 @@ uv run black .
 # Type checking
 uv run mypy .
 ```
+
+The same three checks (Black, mypy, pytest) run in GitHub Actions on every pull request
+(`.github/workflows/ci.yml`).
 
 ### Configuration
 

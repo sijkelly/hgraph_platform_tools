@@ -120,7 +120,9 @@ target-version = ["py312"]
 include = '\.pyi?$'
 extend-exclude = '''
 (
-  fpml_tag_dict_structure\.py
+  \.claude/
+  | venv_.*/
+  | fpml_tag_dict_structure\.py
   | fpml_tags\.py
   | output_fpml_tags\.py
 )
@@ -130,3 +132,11 @@ extend-exclude = '''
 [tool.mypy]
 files = ["."]
 ignore_missing_imports = true
+exclude = [
+    '^\.claude/',
+    '^\.venv/',
+    '^venv_.*/',
+    'fpml_tag_dict_structure\.py$',
+    'fpml_tags\.py$',
+    'output_fpml_tags\.py$',
+]

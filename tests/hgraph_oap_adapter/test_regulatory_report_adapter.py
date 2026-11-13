@@ -1,4 +1,5 @@
 """Tests for the CFTC regulatory report adapter."""
+
 from datetime import date, datetime
 
 import pytest
@@ -36,7 +37,6 @@ from hgraph_oap_adapter.regulatory_report_adapter import (
     swap_to_part45_dict,
     swap_to_part45_record,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

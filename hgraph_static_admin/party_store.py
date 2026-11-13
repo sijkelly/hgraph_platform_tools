@@ -210,9 +210,7 @@ def get_legal_entity(db_path: str, symbol: str) -> LegalEntity | None:
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     try:
-        row = conn.execute(
-            "SELECT * FROM legal_entities WHERE symbol = ?", (symbol,)
-        ).fetchone()
+        row = conn.execute("SELECT * FROM legal_entities WHERE symbol = ?", (symbol,)).fetchone()
     finally:
         conn.close()
 
@@ -240,9 +238,7 @@ def get_all_legal_entities(db_path: str) -> List[LegalEntity]:
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     try:
-        rows = conn.execute(
-            "SELECT * FROM legal_entities ORDER BY symbol"
-        ).fetchall()
+        rows = conn.execute("SELECT * FROM legal_entities ORDER BY symbol").fetchall()
     finally:
         conn.close()
 
@@ -270,9 +266,7 @@ def delete_legal_entity(db_path: str, symbol: str) -> bool:
     """
     conn = sqlite3.connect(db_path)
     try:
-        cursor = conn.execute(
-            "DELETE FROM legal_entities WHERE symbol = ?", (symbol,)
-        )
+        cursor = conn.execute("DELETE FROM legal_entities WHERE symbol = ?", (symbol,))
         conn.commit()
         return cursor.rowcount > 0
     finally:

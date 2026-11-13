@@ -23,7 +23,6 @@ from hgraph_static_admin.credit_kafka_subscriber import (
     parse_credit_utilization_message,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

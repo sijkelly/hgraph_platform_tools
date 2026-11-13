@@ -56,15 +56,12 @@ def _get_client():
         import anthropic
     except ImportError:
         raise RuntimeError(
-            "The 'anthropic' package is required for NLP order parsing. "
-            "Install it with: uv pip install anthropic"
+            "The 'anthropic' package is required for NLP order parsing. " "Install it with: uv pip install anthropic"
         )
 
     api_key = api_config.get("ANTHROPIC_API_KEY", "")
     if not api_key:
-        raise RuntimeError(
-            "ANTHROPIC_API_KEY environment variable must be set for NLP order parsing"
-        )
+        raise RuntimeError("ANTHROPIC_API_KEY environment variable must be set for NLP order parsing")
     return anthropic.Anthropic(api_key=api_key)
 
 
