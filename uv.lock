@@ -568,6 +568,7 @@ all = [
     { name = "kafka-python" },
     { name = "mcp" },
     { name = "pydantic" },
+    { name = "pyjwt", extra = ["crypto"] },
     { name = "pymongo" },
     { name = "requests" },
     { name = "uvicorn", extra = ["standard"] },
@@ -575,7 +576,9 @@ all = [
 api = [
     { name = "anthropic" },
     { name = "fastapi" },
+    { name = "httpx" },
     { name = "pydantic" },
+    { name = "pyjwt", extra = ["crypto"] },
     { name = "uvicorn", extra = ["standard"] },
 ]
 database = [
@@ -593,6 +596,7 @@ dev = [
     { name = "mcp" },
     { name = "mypy" },
     { name = "pydantic" },
+    { name = "pyjwt", extra = ["crypto"] },
     { name = "pymongo" },
     { name = "pytest" },
     { name = "pytest-cov" },
@@ -631,6 +635,7 @@ requires-dist = [
     { name = "hgraph-platform-tools", extras = ["all", "test"], marker = "extra == 'dev'" },
     { name = "hgraph-platform-tools", extras = ["messaging", "notification", "database", "web", "oap", "api", "ai"], marker = "extra == 'all'" },
     { name = "httpx", marker = "extra == 'ai'", specifier = ">=0.27" },
+    { name = "httpx", marker = "extra == 'api'", specifier = ">=0.27" },
     { name = "httpx", marker = "extra == 'test'", specifier = ">=0.27" },
     { name = "jinja2", marker = "extra == 'notification'", specifier = ">=3.1" },
     { name = "kafka-python", marker = "extra == 'messaging'", specifier = ">=2.1.5" },
@@ -639,6 +644,7 @@ requires-dist = [
     { name = "numpy", specifier = ">=1.23" },
     { name = "pandas", specifier = ">=2.0" },
     { name = "pydantic", marker = "extra == 'api'", specifier = ">=2.0" },
+    { name = "pyjwt", extras = ["crypto"], marker = "extra == 'api'", specifier = ">=2.8" },
     { name = "pymongo", marker = "extra == 'database'", specifier = ">=4.0" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=7.4" },
     { name = "pytest-cov", marker = "extra == 'test'", specifier = ">=4.0" },

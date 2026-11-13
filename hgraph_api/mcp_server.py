@@ -17,6 +17,7 @@ from typing import Any, Callable
 
 import httpx
 
+from hgraph_api.client_auth import ClientAuthError
 from hgraph_oms.trades import DEFAULT_PRODUCTS
 
 __all__ = ("TOOL_NAMES", "OmsApiError", "OmsApiTools", "build_server")
@@ -51,7 +52,7 @@ class OmsApiTools:
     """The operations an agent may perform, implemented over the OMS REST API.
 
     :param http: An HTTP client whose base URL is the OMS API and whose headers identify the
-        agent (``X-User-Id``).  Anything with httpx's ``request`` method works.
+        agent (a bearer token, or ``X-User-Id`` in development).  Anything with httpx's ``request`` method works.
     """
 
     def __init__(self, http: Any):
@@ -60,6 +61,8 @@ class OmsApiTools:
     def _call(self, method: str, path: str, **kwargs: Any) -> Any:
         try:
             response = self._http.request(method, path, **kwargs)
+        except ClientAuthError as exc:
+            raise OmsApiError(f"Could not sign in to the OMS API: {exc}") from exc
         except httpx.HTTPError as exc:
             raise OmsApiError(f"The OMS API could not be reached: {type(exc).__name__}") from exc
         if response.status_code >= 400:

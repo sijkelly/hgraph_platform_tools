@@ -17,6 +17,8 @@ import os
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
+from hgraph_api.middleware.auth import accept_websocket
+
 __all__ = ("router",)
 
 logger = logging.getLogger(__name__)
@@ -77,7 +79,8 @@ async def credit_websocket(websocket: WebSocket):
     On connect, sends a full snapshot.  Then polls for changes and
     pushes updates to the client.  Send ``"close"`` to cleanly disconnect.
     """
-    await websocket.accept()
+    if not await accept_websocket(websocket):
+        return
     _clients.add(websocket)
     logger.info("Credit WebSocket client connected (%d total)", len(_clients))
 

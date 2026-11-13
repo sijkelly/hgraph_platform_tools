@@ -476,13 +476,20 @@ def _run_serve(args: argparse.Namespace) -> int:
 def _add_mcp_parser(subparsers: argparse._SubParsersAction) -> None:
     p = subparsers.add_parser("mcp", help="Start the MCP server that gives an AI agent access to the OMS API")
     p.add_argument("--api-url", type=str, default="http://localhost:8000", help="Base URL of the OMS API")
-    p.add_argument("--user-id", type=str, default="ai-agent", help="User ID the agent acts as (X-User-Id)")
+    p.add_argument(
+        "--user-id",
+        type=str,
+        default="ai-agent",
+        help="User ID the agent acts as when the API trusts X-User-Id (development). Against an API that "
+        "requires tokens, set OMS_TOKEN_URL, OMS_CLIENT_ID and OMS_CLIENT_SECRET, or OMS_API_TOKEN, instead",
+    )
     p.set_defaults(func=_run_mcp)
 
 
 def _run_mcp(args: argparse.Namespace) -> int:
     import httpx
 
+    from hgraph_api.client_auth import client_auth_from_env
     from hgraph_api.mcp_server import OmsApiTools, build_server
 
     # The MCP stdio transport owns stdout, so all logging must go to stderr
@@ -490,7 +497,14 @@ def _run_mcp(args: argparse.Namespace) -> int:
         if isinstance(handler, logging.StreamHandler) and getattr(handler, "stream", None) is sys.stdout:
             handler.setStream(sys.stderr)
 
-    with httpx.Client(base_url=args.api_url, headers={"X-User-Id": args.user_id}, timeout=30.0) as http:
+    try:
+        auth = client_auth_from_env()
+    except ValueError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 1
+    # With a token the API takes the agent's identity from it, and ignores X-User-Id
+    headers = {} if auth else {"X-User-Id": args.user_id}
+    with httpx.Client(base_url=args.api_url, headers=headers, auth=auth, timeout=30.0) as http:
         build_server(OmsApiTools(http)).run("stdio")
     return 0
 

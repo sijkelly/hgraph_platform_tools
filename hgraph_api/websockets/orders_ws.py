@@ -12,6 +12,7 @@ import logging
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from starlette.concurrency import run_in_threadpool
 
+from hgraph_api.middleware.auth import accept_websocket
 from hgraph_api.services.order_engine import get_order_engine, orders_to_dicts
 
 __all__ = ("router",)
@@ -30,7 +31,8 @@ async def orders_websocket(websocket: WebSocket):
     Sends an ``orders.snapshot`` message on connect and after every change the
     order engine publishes.  Send ``"close"`` to cleanly disconnect.
     """
-    await websocket.accept()
+    if not await accept_websocket(websocket):
+        return
     _clients.add(websocket)
     logger.info("Orders WebSocket client connected (%d total)", len(_clients))
 

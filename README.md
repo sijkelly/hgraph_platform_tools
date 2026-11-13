@@ -46,6 +46,23 @@ notification pipelines for commodity and financial trade processing.
   tools to read orders, trades, counterparties, credit and products and to draft proposals. There is no tool
   that submits, amends, fills or cancels an order.
 
+### Authentication
+- **Development (`AUTH_MODE=header`, the default)** — The caller is whoever the `X-User-Id` header says.
+  Nothing verifies it, so use this only on a developer machine.
+- **OpenID Connect (`AUTH_MODE=oidc`)** — Every request and WebSocket connection must carry a bearer token
+  from your identity provider (Entra ID, Okta, Auth0, Keycloak, ...). Set `OIDC_ISSUER` and `OIDC_AUDIENCE`;
+  the signing keys are found through the issuer's discovery document. The token's signature, issuer, audience
+  and expiry are checked, and `X-User-Id` is ignored. The server refuses to start if the settings are
+  incomplete.
+- **User IDs** — The user ID is the token's `sub` claim, or the claim named by `OIDC_USER_CLAIM` (for example
+  `email`). Entitlements must be granted to that same ID. `GET /api/v1/me` shows who the API takes you to be.
+  Set `API_ENFORCE_ENTITLEMENTS=true` as well, or any signed-in user can trade.
+- **WebSockets** — Send the token in the `Authorization` header, or from a browser as the subprotocol pair
+  `new WebSocket(url, ["bearer", token])`.
+- **Agents** — Give the MCP server its own service account: set `OMS_TOKEN_URL`, `OMS_CLIENT_ID` and
+  `OMS_CLIENT_SECRET` (client-credentials grant, renewed automatically), or `OMS_API_TOKEN` for a fixed token.
+  Because the agent's identity comes from its token, it cannot confirm its own proposals.
+
 ### hg_oap Adapters (`hgraph_oap_adapter`)
 - **Domain adapters** — Convert `hg_oap` swaps, parties, order lifecycle events and regulatory
   reports into booking-pipeline and data-lake records

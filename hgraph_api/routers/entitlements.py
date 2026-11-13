@@ -1,6 +1,6 @@
 """Entitlements REST endpoints."""
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 
 from hgraph_entitlements import (
     STATIC_ROLES,
@@ -10,9 +10,30 @@ from hgraph_entitlements import (
 )
 from hgraph_entitlements.checker import check_permission, get_allowed_actions
 
-__all__ = ("router",)
+__all__ = ("router", "me_router")
 
 router = APIRouter(prefix="/api/v1/entitlements", tags=["entitlements"])
+me_router = APIRouter(prefix="/api/v1/me", tags=["entitlements"])
+
+
+@me_router.get("")
+def get_current_user(request: Request) -> dict:
+    """Return who the API takes the caller to be, with their role and allowed actions."""
+    user_id = getattr(request.state, "user_id", "")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="The caller is not identified")
+    conn = get_db_connection()
+    initialize_db(conn)
+    try:
+        role = get_user_role(conn, user_id)
+    finally:
+        conn.close()
+    return {
+        "user_id": user_id,
+        "role": role,
+        "allowed_actions": sorted(get_allowed_actions(role)) if role else [],
+        "auth_mode": getattr(request.app.state, "auth_mode", "header"),
+    }
 
 
 @router.get("/{user_id}")

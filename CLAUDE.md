@@ -134,7 +134,9 @@ hgraph_platform_tools/
 │   ├── services/                       # Order engine access, Claude order parser
 │   ├── websockets/                     # Live order and credit feeds
 │   ├── mcp_server.py                   # MCP tools for AI agents (read + propose only)
-│   └── middleware/auth.py              # X-User-Id + entitlements check
+│   ├── client_auth.py                  # Bearer-token sign-in for API clients (MCP server)
+│   ├── services/tokens.py              # OIDC access-token verification
+│   └── middleware/auth.py              # Caller identity (X-User-Id or OIDC token) + entitlements check
 ├── hgraph_oms/                         # Order core (hgraph_api's order endpoints run on it)
 │   ├── model.py                        # Immutable messages, snapshots, responses
 │   ├── state_machine.py                # Lifecycle transitions (pure)
