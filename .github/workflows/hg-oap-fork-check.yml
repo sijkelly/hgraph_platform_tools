@@ -1,0 +1,166 @@
+name: hg_oap fork check
+
+# Weekly: try rebasing sijkelly/hg_oap@simon/extensions onto hhenson/hg_oap main,
+# then run hg_oap's own tests and this repo's tests against the rebased code.
+#
+# This job never pushes to the fork. It reports the outcome as an issue in this
+# repo (label: hg-oap-fork) so the force-push stays a deliberate, local step.
+# It lives here rather than in the fork so the fork's main stays a clean mirror
+# of upstream and every upstream alert lands in one place.
+
+on:
+  schedule:
+    - cron: "0 7 * * 1" # Mondays 07:00 UTC, after upstream-check
+  workflow_dispatch:
+
+concurrency:
+  group: hg-oap-fork-check
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  FORK_REPO: sijkelly/hg_oap
+  FORK_BRANCH: simon/extensions
+  UPSTREAM_REPO: hhenson/hg_oap
+  UPSTREAM_BRANCH: main
+
+jobs:
+  rebase:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      # Sibling layout (platform/ and hg_oap/) means pytest's
+      # pythonpath "../hg_oap/src" also points at the rebased checkout.
+      - uses: actions/checkout@v4
+        with:
+          path: platform
+
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ env.FORK_REPO }}
+          ref: ${{ env.FORK_BRANCH }}
+          path: hg_oap
+          fetch-depth: 0
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+
+      - name: Rebase onto upstream
+        id: rebase
+        working-directory: hg_oap
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote add upstream "https://github.com/${UPSTREAM_REPO}.git"
+          git fetch --quiet upstream "$UPSTREAM_BRANCH"
+
+          echo "fork_sha=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+          echo "upstream_sha=$(git rev-parse --short upstream/$UPSTREAM_BRANCH)" >> "$GITHUB_OUTPUT"
+          behind="$(git rev-list --count HEAD..upstream/$UPSTREAM_BRANCH)"
+          echo "behind=$behind" >> "$GITHUB_OUTPUT"
+          echo "ahead=$(git rev-list --count upstream/$UPSTREAM_BRANCH..HEAD)" >> "$GITHUB_OUTPUT"
+          git log --oneline "HEAD..upstream/$UPSTREAM_BRANCH" > ../upstream-commits.txt
+
+          if [[ "$behind" == "0" ]]; then
+            echo "result=up-to-date" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if git rebase "upstream/$UPSTREAM_BRANCH" > ../rebase.log 2>&1; then
+            echo "result=clean" >> "$GITHUB_OUTPUT"
+          else
+            echo "result=conflict" >> "$GITHUB_OUTPUT"
+            git diff --name-only --diff-filter=U > ../conflicts.txt || true
+            git status >> ../rebase.log 2>&1 || true
+            git rebase --abort
+          fi
+
+      - name: hg_oap tests (rebased)
+        id: oap_tests
+        if: steps.rebase.outputs.result != 'conflict'
+        continue-on-error: true
+        working-directory: hg_oap
+        run: |
+          set -o pipefail
+          uv sync --all-extras --all-groups
+          uv run --no-sync pytest -q -ra -p no:cacheprovider -n 4 2>&1 | tee ../oap-tests.log
+
+      - name: Platform tests against rebased hg_oap
+        id: platform_tests
+        if: steps.rebase.outputs.result != 'conflict'
+        continue-on-error: true
+        working-directory: platform
+        run: |
+          set -o pipefail
+          uv sync --locked --extra dev
+          uv pip install --python .venv/bin/python ../hg_oap
+          uv run --no-sync pytest tests/ -q -ra 2>&1 | tee ../platform-tests.log
+
+      - name: Report
+        if: always()
+        run: |
+          result="${{ steps.rebase.outputs.result }}"
+          oap="${{ steps.oap_tests.outcome }}"
+          plat="${{ steps.platform_tests.outcome }}"
+          behind="${{ steps.rebase.outputs.behind }}"
+          tail_log() { echo '```'; tail -c 25000 "$1" 2>/dev/null || echo "(no output)"; echo '```'; }
+
+          if [[ "$result" == "up-to-date" && "$oap" == "success" && "$plat" == "success" ]]; then
+            echo "### ${FORK_BRANCH} is up to date with ${UPSTREAM_REPO}@${UPSTREAM_BRANCH}; tests pass" >> "$GITHUB_STEP_SUMMARY"
+            for n in $(gh issue list --state open --label hg-oap-fork --json number --jq '.[].number'); do
+              gh issue close "$n" --comment "Resolved: \`${FORK_BRANCH}\` is now on top of upstream and tests pass."
+            done
+            exit 0
+          fi
+
+          {
+            echo "Weekly check of \`${FORK_REPO}@${FORK_BRANCH}\` (${{ steps.rebase.outputs.fork_sha }}, ${{ steps.rebase.outputs.ahead }} commits ahead) against \`${UPSTREAM_REPO}@${UPSTREAM_BRANCH}\` (${{ steps.rebase.outputs.upstream_sha }}, ${behind} new commits)."
+            echo
+            echo "- Rebase: **${result}**"
+            echo "- hg_oap tests: **${oap:-skipped}**"
+            echo "- hgraph_platform_tools tests: **${plat:-skipped}**"
+            echo
+            echo "Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            echo
+            if [[ "$result" == "conflict" ]]; then
+              echo "Conflicting files:"
+              echo '```'; cat conflicts.txt 2>/dev/null; echo '```'
+              echo "<details><summary>rebase log</summary>"; echo; tail_log rebase.log; echo "</details>"
+            fi
+            if [[ "$oap" == "failure" ]]; then
+              echo "<details><summary>hg_oap pytest (tail)</summary>"; echo; tail_log oap-tests.log; echo "</details>"
+            fi
+            if [[ "$plat" == "failure" ]]; then
+              echo "<details><summary>platform pytest (tail)</summary>"; echo; tail_log platform-tests.log; echo "</details>"
+            fi
+            if [[ "$result" == "clean" && "$oap" == "success" && "$plat" == "success" ]]; then
+              echo "Everything passes on the rebased branch. To apply it (in your hg_oap clone):"
+              echo '```bash'
+              echo "git fetch origin && git checkout ${FORK_BRANCH} && git rebase origin/${UPSTREAM_BRANCH}"
+              echo "git push --force-with-lease fork ${FORK_BRANCH}"
+              echo '```'
+              echo "Then \`uv lock --upgrade-package hg-oap\` here (or let the upstream-check workflow do it)."
+            fi
+            echo
+            echo "<details><summary>New upstream commits</summary>"; echo
+            echo '```'; cat upstream-commits.txt 2>/dev/null; echo '```'; echo "</details>"
+          } > issue.md
+          cat issue.md >> "$GITHUB_STEP_SUMMARY"
+
+          if [[ "$result" == "clean" && "$oap" == "success" && "$plat" == "success" ]]; then
+            title="hg_oap fork: ${FORK_BRANCH} rebases cleanly onto upstream (${behind} commits) — ready to push"
+          elif [[ "$result" == "conflict" ]]; then
+            title="hg_oap fork: ${FORK_BRANCH} has rebase conflicts with upstream"
+          else
+            title="hg_oap fork: tests fail on ${FORK_BRANCH} (rebase: ${result})"
+          fi
+          platform/.github/scripts/upsert-issue.sh hg-oap-fork "$title" issue.md
+
+          # Red run only when something needs fixing, not when a clean rebase is merely pending.
+          [[ "$result" != "conflict" && "$oap" == "success" && "$plat" == "success" ]]

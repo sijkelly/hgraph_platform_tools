@@ -61,11 +61,13 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 # ---------- uv ----------
-# hg-oap is installed from the local clone on branch simon/extensions
-# (fork: https://github.com/sijkelly/hg_oap). The parties, credit, regulatory
-# and sales-order modules used here are not in the PyPI release.
+# hg-oap comes from Simon's fork on branch simon/extensions: the parties, credit,
+# regulatory, swap and sales-order modules used here are not in the PyPI release.
+# A git source keeps the lock resolvable in CI. For local hg_oap development,
+# pytest already prefers a sibling checkout via ``pythonpath = ["../hg_oap/src"]``
+# below; see CLAUDE.md "First Time Setup" for using it outside pytest.
 [tool.uv.sources]
-hg-oap = { path = "../hg_oap", editable = true }
+hg-oap = { git = "https://github.com/sijkelly/hg_oap", branch = "simon/extensions" }
 
 [tool.hatch.build.targets.wheel]
 packages = [
@@ -80,6 +82,7 @@ packages = [
 # ---------- pytest ----------
 [tool.pytest.ini_options]
 minversion = "7.4"
+# "../hg_oap/src" makes a sibling hg_oap checkout (if present) shadow the locked git install.
 pythonpath = [".", "../hg_oap/src"]
 testpaths = ["tests"]
 markers = [

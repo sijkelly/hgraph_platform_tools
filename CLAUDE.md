@@ -31,15 +31,42 @@ The project consumes hgraph as a dependency and follows its coding conventions.
 # 1. Install uv (if not already installed)
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# 2. Create virtual environment with Python 3.12
-uv venv --python 3.12 .venv
+# 2. Create the venv and install everything pinned in uv.lock (Python 3.12)
+uv sync --python 3.12 --extra dev
 
-# 3. Install the project with all dependencies (including dev/test)
-uv pip install -e ".[dev]"
-
-# 4. Verify installation
+# 3. Verify installation
 uv run pytest tests/ -q
 ```
+
+### Upstream dependencies
+
+- **hgraph** comes from PyPI, pinned to the C++-backed 0.8 line (``>=0.8.40,<0.9``).
+- **hg-oap** comes from Simon's fork, **not PyPI**: ``sijkelly/hg_oap`` branch ``simon/extensions``
+  (upstream ``hhenson/hg_oap`` plus the parties, credit, regulatory, swap/swaption and sales-order
+  modules). ``[tool.uv.sources]`` in ``pyproject.toml`` points at that git branch and ``uv.lock`` pins the commit.
+
+Working on hg_oap alongside this repo: clone the fork as a sibling (``../hg_oap``, on ``simon/extensions``).
+
+- ``uv run pytest`` picks the sibling up automatically: ``pythonpath = ["../hg_oap/src"]`` in ``pyproject.toml``
+  puts it ahead of the locked git install. No reinstall needed.
+- Outside pytest (``hgraph-tools serve`` etc.), install it editable and stop ``uv run`` re-syncing over it:
+
+  ```bash
+  uv pip install -e ../hg_oap
+  export UV_NO_SYNC=1   # or pass --no-sync to each `uv run`
+  ```
+
+- After pushing new commits to ``simon/extensions``, pick them up with ``uv lock --upgrade-package hg-oap``.
+
+### Automated upstream tracking (``.github/workflows/``)
+
+| Workflow | When | What |
+|----------|------|------|
+| ``tests.yml`` | push / PR to ``main`` | ``uv sync --locked --extra dev`` + pytest |
+| ``upstream-check.yml`` | Mondays 06:00 UTC, manual | Upgrades hgraph + hg-oap in ``uv.lock``; green → PR ``automation/upstream-upgrade``, red → issue labelled ``upstream-break`` |
+| ``hg-oap-fork-check.yml`` | Mondays 07:00 UTC, manual | Rebases ``simon/extensions`` onto ``hhenson/hg_oap`` main (never pushes), runs both test suites, reports via issue labelled ``hg-oap-fork`` |
+
+Run one by hand: ``gh workflow run upstream-check.yml``.
 
 ---
 
