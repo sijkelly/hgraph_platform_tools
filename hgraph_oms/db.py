@@ -25,7 +25,7 @@ from contextlib import contextmanager
 from typing import Any, Iterable, Iterator, Sequence
 from urllib.parse import parse_qs, urlsplit
 
-__all__ = ("SQLITE", "POSTGRES", "Transaction", "Database", "with_schema", "get_database", "close_databases")
+__all__ = ("SQLITE", "POSTGRES", "Transaction", "Database", "with_schema", "connect", "get_database", "close_databases")
 
 logger = logging.getLogger(__name__)
 
@@ -111,6 +111,8 @@ class Database:
         self._slots = threading.BoundedSemaphore(pool_size)
         self._locks: dict[str, Any] = {}
         self._closed = False
+        self._schema_ready = not self.schema
+        self._initialised: set[str] = set()
 
     # ------------------------------------------------------------------
     # What differs between the two databases
@@ -201,6 +203,16 @@ class Database:
         with self.transaction() as tx:
             return tx.query(sql, params)
 
+    def needs_init(self, name: str) -> bool:
+        """Whether a store's tables may still need creating: always on SQLite (the file can be
+        replaced at any time), once per process and store on PostgreSQL."""
+        if self.dialect == SQLITE:
+            return True
+        if name in self._initialised:
+            return False
+        self._initialised.add(name)
+        return True
+
     def create(self, *statements: str) -> None:
         """Run schema statements (``CREATE TABLE IF NOT EXISTS`` and the like) in one transaction."""
         with self.transaction() as tx:
@@ -211,6 +223,7 @@ class Database:
                 tx.execute(f"SELECT pg_advisory_xact_lock({_LOCK_KEY_SQL})", (self.schema or None, "create-tables"))
                 if self.schema:
                     tx.execute(f'CREATE SCHEMA IF NOT EXISTS "{self.schema}"')
+                    self._schema_ready = True
             for statement in statements:
                 tx.execute(statement)
 
@@ -302,6 +315,122 @@ class Database:
                 self._pool.get_nowait().close()
             except queue.Empty:
                 return
+
+
+# ---------------------------------------------------------------------------
+# sqlite3-style connections, for stores written against the sqlite3 module
+# ---------------------------------------------------------------------------
+
+
+class _Row(tuple):
+    """A result row readable by position or by column name, like ``sqlite3.Row``."""
+
+    _columns: tuple[str, ...] = ()
+
+    def __getitem__(self, key: Any) -> Any:
+        if isinstance(key, str):
+            try:
+                return tuple.__getitem__(self, self._columns.index(key))
+            except ValueError:
+                raise IndexError(f"No item with that key: {key}") from None
+        return tuple.__getitem__(self, key)
+
+    def keys(self) -> list[str]:
+        return list(self._columns)
+
+
+def _row_factory(cursor: Any) -> Any:
+    columns = tuple(column.name for column in cursor.description or ())
+    row_type = type("Row", (_Row,), {"_columns": columns})
+    return row_type
+
+
+class _PostgresCursor:
+    def __init__(self, connection: "_PostgresConnection"):
+        self._connection = connection
+        self._cursor = connection._raw.cursor(row_factory=_row_factory)
+
+    def execute(self, sql: str, params: Sequence[Any] = ()) -> "_PostgresCursor":
+        if sql.lstrip().upper().startswith("PRAGMA"):
+            return self  # SQLite housekeeping; nothing to do
+        self._cursor.execute(self._connection._database.sql(sql), tuple(params))
+        return self
+
+    def executemany(self, sql: str, rows: Iterable[Sequence[Any]]) -> "_PostgresCursor":
+        self._cursor.executemany(self._connection._database.sql(sql), [tuple(row) for row in rows])
+        return self
+
+    def fetchone(self) -> Any:
+        return self._cursor.fetchone() if self._cursor.description else None
+
+    def fetchall(self) -> list[Any]:
+        return self._cursor.fetchall() if self._cursor.description else []
+
+    @property
+    def rowcount(self) -> int:
+        return self._cursor.rowcount
+
+
+class _PostgresConnection:
+    """A pooled PostgreSQL connection with the parts of the ``sqlite3`` connection API the stores use."""
+
+    row_factory: Any = None  # accepted for compatibility; rows always read by position and by name
+
+    def __init__(self, database: Database):
+        self._database = database
+        self._raw = database._acquire()
+        self._healthy = True
+
+    def cursor(self) -> _PostgresCursor:
+        return _PostgresCursor(self)
+
+    def execute(self, sql: str, params: Sequence[Any] = ()) -> _PostgresCursor:
+        return self._run(lambda: self.cursor().execute(sql, params))
+
+    def executemany(self, sql: str, rows: Iterable[Sequence[Any]]) -> _PostgresCursor:
+        return self._run(lambda: self.cursor().executemany(sql, rows))
+
+    def _run(self, action: Any) -> _PostgresCursor:
+        try:
+            return action()
+        except BaseException:
+            # PostgreSQL refuses further statements until the failed transaction is rolled back
+            self.rollback()
+            raise
+
+    def commit(self) -> None:
+        self._raw.commit()
+
+    def rollback(self) -> None:
+        try:
+            self._raw.rollback()
+        except Exception:
+            self._healthy = False
+
+    def close(self) -> None:
+        raw, self._raw = self._raw, None
+        if raw is None:
+            return
+        try:
+            raw.rollback()  # like sqlite3, closing discards anything not committed
+        except Exception:
+            self._healthy = False
+        self._database._release(raw, self._healthy)
+
+
+def connect(target: "str | Database") -> Any:
+    """Open a connection with the ``sqlite3`` connection interface on either kind of database.
+
+    For a SQLite target this *is* ``sqlite3.connect``.  For PostgreSQL it returns a pooled
+    connection that takes the same ``?`` placeholders, ignores ``PRAGMA`` statements, and whose
+    rows can be read by position or by column name.  Close it when done, as with ``sqlite3``.
+    """
+    database = get_database(target)
+    if database.dialect == SQLITE:
+        return sqlite3.connect(database.target)
+    if not database._schema_ready:
+        database.create()
+    return _PostgresConnection(database)
 
 
 # ---------------------------------------------------------------------------

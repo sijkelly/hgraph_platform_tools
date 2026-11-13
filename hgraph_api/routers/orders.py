@@ -33,6 +33,7 @@ from hgraph_api.services.order_engine import (
     parse_number,
     sync_credit,
     sync_permissions,
+    order_db_target,
 )
 from hgraph_oms.engine import OrderEngine
 from hgraph_oms.model import (
@@ -63,7 +64,7 @@ _FILL_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$")
 
 def _credit_db_path(request: Request) -> str:
     db_dir = getattr(request.app.state, "db_dir", ".")
-    return os.path.join(db_dir, "credit_data.db")
+    return order_db_target(request.app, db_dir, "credit_data.db")
 
 
 # ---------------------------------------------------------------------------
@@ -76,7 +77,7 @@ def _known_counterparties(request: Request) -> list[str]:
     try:
         from hgraph_static_admin.party_store import get_all_legal_entities, init_party_db
 
-        db = os.path.join(getattr(request.app.state, "db_dir", "."), "party_data.db")
+        db = order_db_target(request.app, getattr(request.app.state, "db_dir", "."), "party_data.db")
         init_party_db(db)
         return [entity.symbol for entity in get_all_legal_entities(db)]
     except Exception as exc:

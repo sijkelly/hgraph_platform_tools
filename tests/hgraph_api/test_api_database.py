@@ -71,3 +71,76 @@ def test_nothing_is_written_to_sqlite_files_when_a_database_url_is_set(tmp_path,
 
     for name in ("order_events.db", "trade_bookings.db", "order_proposals.db"):
         assert not (tmp_path / name).exists()
+
+
+def test_reference_data_and_credit_check_use_the_same_database(tmp_path, oms_db):
+    from datetime import date
+
+    from hg_oap.credit.credit_limit import CreditLimit, CreditLimitType, CreditStatus, CreditUtilization
+    from hgraph_static_admin.credit_store import init_credit_db, upsert_credit_limit, upsert_credit_utilization
+
+    # Written the way the credit Kafka subscriber writes it
+    init_credit_db(oms_db)
+    upsert_credit_limit(
+        oms_db,
+        CreditLimit(
+            counterparty_symbol="ACME",
+            limit_type=CreditLimitType.BILATERAL,
+            limit_amount=50_000.0,
+            limit_currency="USD",
+            effective_date=date(2026, 1, 1),
+            expiry_date=date(2028, 1, 1),
+            status=CreditStatus.ACTIVE,
+            approved_by="Credit Committee",
+            last_review_date=date(2026, 6, 15),
+        ),
+    )
+    upsert_credit_utilization(
+        oms_db,
+        CreditUtilization(
+            counterparty_symbol="ACME",
+            utilized_amount=30_000.0,
+            utilization_currency="USD",
+            limit_amount=50_000.0,
+            available_amount=20_000.0,
+            utilization_percentage=60.0,
+        ),
+    )
+
+    with _client(tmp_path, oms_db) as api:
+        (limit,) = api.get("/api/v1/credit/limits").json()
+        assert (limit["counterparty_symbol"], limit["limit_amount"]) == ("ACME", 50_000.0)
+        assert api.get("/api/v1/credit/utilizations/ACME").json()["utilized_amount"] == 30_000.0
+
+        # 10,000 x 3.5 = 35,000 on top of 30,000 used would pass the 50,000 limit
+        refused = api.post("/api/v1/orders", json=_ORDER, headers=_TRADER)
+        assert refused.status_code == 422, refused.text
+        assert "credit" in refused.json()["detail"].lower()
+
+        accepted = api.post("/api/v1/orders", json={**_ORDER, "quantity": "5000"}, headers=_TRADER)
+        assert accepted.status_code == 201
+
+    for name in ("credit_data.db", "party_data.db", "portfolio_data.db"):
+        assert not (tmp_path / name).exists()
+
+
+def test_entitlements_follow_the_configured_database(tmp_path, oms_db, monkeypatch):
+    from hgraph_entitlements.checker import check_permission
+    from hgraph_entitlements.example_code import get_db_connection, initialize_db, update_user_role
+
+    if "://" in oms_db:
+        monkeypatch.setenv("DATABASE_URL", oms_db.split("?options=")[0].split("&options=")[0])
+        monkeypatch.setenv("DATABASE_SCHEMA", oms_db.rsplit("%3D", 1)[1])
+    else:
+        monkeypatch.delenv("DATABASE_URL", raising=False)
+        monkeypatch.setenv("ENTITLEMENTS_DB_PATH", oms_db)
+
+    conn = get_db_connection()
+    try:
+        initialize_db(conn)
+        update_user_role(conn, "trader1", "Trader")
+    finally:
+        conn.close()
+
+    assert check_permission("trader1", "execute_trade")
+    assert not check_permission("someone-else", "execute_trade")

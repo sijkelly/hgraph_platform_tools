@@ -79,8 +79,8 @@ def load_secure_config() -> Dict[str, str]:
         # Token claim that must equal TENANT_ID (e.g. tid, org_id) when tenants share an identity provider
         "OIDC_TENANT_CLAIM": os.getenv("OIDC_TENANT_CLAIM", ""),
         # --- Order core database ---
-        # postgresql://user:password@host:5432/dbname; empty keeps the order log, bookings and
-        # proposals in SQLite files in the API's database directory
+        # postgresql://user:password@host:5432/dbname for orders, bookings, proposals, reference data
+        # and entitlements; empty keeps each store in its own SQLite file
         "DATABASE_URL": os.getenv("DATABASE_URL", ""),
         # --- API authentication ---
         # "header" trusts the X-User-Id header (development only); "oidc" requires bearer tokens

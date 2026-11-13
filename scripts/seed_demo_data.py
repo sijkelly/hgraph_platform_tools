@@ -50,9 +50,9 @@ from hgraph_oms.model import NewOrder
 def seed(db_dir: str) -> None:
     os.makedirs(db_dir, exist_ok=True)
 
-    credit_db = os.path.join(db_dir, "credit_data.db")
-    party_db = os.path.join(db_dir, "party_data.db")
-    portfolio_db = os.path.join(db_dir, "portfolio_data.db")
+    credit_db = order_db_target(None, db_dir, "credit_data.db")
+    party_db = order_db_target(None, db_dir, "party_data.db")
+    portfolio_db = order_db_target(None, db_dir, "portfolio_data.db")
     order_db = order_db_target(None, db_dir, ORDER_EVENTS_DB)
 
     # -----------------------------------------------------------------------

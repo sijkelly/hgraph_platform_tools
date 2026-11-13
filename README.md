@@ -47,16 +47,16 @@ notification pipelines for commodity and financial trade processing.
   that submits, amends, fills or cancels an order.
 
 ### Database
-- **SQLite by default** — With nothing configured, the order log, trade bookings and proposals are SQLite files
-  in the API's database directory. Good for development and demos.
-- **PostgreSQL** — Set `DATABASE_URL=postgresql://user:password@host:5432/dbname` and those three stores use
-  that database instead (install the `postgres` extra). Tables are created on first start. Nothing is migrated
-  from existing SQLite files.
+- **SQLite by default** — With nothing configured, each store is a SQLite file in the API's database
+  directory. Good for development and demos.
+- **PostgreSQL** — Set `DATABASE_URL=postgresql://user:password@host:5432/dbname` (and install the `postgres`
+  extra) and the order log, trade bookings, proposals, parties, portfolios, credit and entitlements all use
+  that database. Tables are created on first use. The Kafka subscribers and `hgraph-tools entitlements` read
+  the same setting, so they write where the API reads. Nothing is migrated from existing SQLite files.
 - **One engine per database** — The order engine holds a PostgreSQL advisory lock on its schema, so a second
   API instance pointed at the same database refuses to process orders (`503`) rather than run a second,
   diverging order book. After a crash the lock is released with the connection and a restart takes over.
-- **Still SQLite** — Reference data (parties, portfolios, credit) and entitlements. These are fed from
-  upstream systems and stay in files in the database directory.
+- **Still SQLite only** — EV rates, the order-lifecycle analytics store and the legacy `static-admin` pipeline.
 
 ### Tenancy
 - **One deployment per customer** — Each customer gets its own API process, and with it its own order engine,
@@ -68,8 +68,9 @@ notification pipelines for commodity and financial trade processing.
 - **Shared identity provider** — If customers sign in through the same provider, set `OIDC_TENANT_CLAIM` to
   the claim that names the user's organisation (`tid` for Entra ID, `org_id` for Auth0). A token whose claim
   is not this deployment's `TENANT_ID` is refused, even though the provider signed it.
-- **Per customer, set separately** — `API_DB_DIR` (or a separate Docker volume), `TRADE_KAFKA_TOPIC`,
-  `INTERNAL_PARTY_ID` and `ENTITLEMENTS_DB_PATH`. Two customers must not share a trade topic.
+- **Per customer, set separately** — `API_DB_DIR` (or a separate Docker volume) for booked trade files,
+  `TRADE_KAFKA_TOPIC` and `INTERNAL_PARTY_ID`. Two customers must not share a trade topic. On SQLite, also
+  `ENTITLEMENTS_DB_PATH`.
 
 ### Authentication
 - **Development (`AUTH_MODE=header`, the default)** — The caller is whoever the `X-User-Id` header says.
@@ -162,7 +163,7 @@ docker build --build-context hg_oap=../hg_oap -t hgraph-oms .
 docker run -p 8000:8000 -v oms-data:/data hgraph-oms
 ```
 
-To run it with PostgreSQL for the order log, bookings and proposals:
+To run it with PostgreSQL for all order, reference and entitlement data:
 
 ```bash
 POSTGRES_PASSWORD=choose-one docker compose -f compose.yaml -f compose.postgres.yaml up --build -d

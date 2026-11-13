@@ -18,6 +18,7 @@ import os
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from hgraph_api.middleware.auth import accept_websocket
+from hgraph_api.services.order_engine import order_db_target
 
 __all__ = ("router",)
 
@@ -31,7 +32,7 @@ _clients: set[WebSocket] = set()
 
 def _db_path(websocket: WebSocket) -> str:
     db_dir = getattr(websocket.app.state, "db_dir", ".")
-    return os.path.join(db_dir, "credit_data.db")
+    return order_db_target(websocket.app, db_dir, "credit_data.db")
 
 
 def _snapshot_limits(db_path: str) -> list[dict]:

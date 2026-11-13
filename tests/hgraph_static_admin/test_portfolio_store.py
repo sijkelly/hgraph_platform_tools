@@ -30,10 +30,9 @@ from hgraph_static_admin.portfolio_store import (
 
 
 @pytest.fixture()
-def db_path(tmp_path):
-    path = str(tmp_path / "test_portfolio.db")
-    init_portfolio_db(path)
-    return path
+def db_path(oms_db):
+    init_portfolio_db(oms_db)
+    return oms_db
 
 
 @pytest.fixture()

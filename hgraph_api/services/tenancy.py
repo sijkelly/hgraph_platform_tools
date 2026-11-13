@@ -15,39 +15,7 @@ apart when they share infrastructure:
 With ``TENANT_ID`` unset the deployment is single-tenant and neither applies.
 """
 
-import os
-import re
-
 from hgraph_api.config import api_config
+from hgraph_oms.settings import database_schema, tenant_id
 
-__all__ = ("tenant_id", "database_schema")
-
-_TENANT_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,62}$")
-
-
-def _setting(name: str) -> str:
-    return (os.getenv(name) or api_config.get(name) or "").strip()
-
-
-def tenant_id() -> str:
-    """Return the tenant this deployment serves, or ``""`` if it is single-tenant.
-
-    :raises RuntimeError: If ``TENANT_ID`` is set to something that is not a plain identifier.
-    """
-    tenant = _setting("TENANT_ID")
-    if tenant and not _TENANT_ID.match(tenant):
-        raise RuntimeError("TENANT_ID must be 1-63 letters, digits, '.', '_' or '-', starting with a letter or digit")
-    return tenant
-
-
-def database_schema() -> str:
-    """Return the PostgreSQL schema holding this deployment's order data, or ``""`` for the default.
-
-    ``DATABASE_SCHEMA`` if set; otherwise ``tenant_<id>`` (lower-cased, with ``.`` and ``-`` as
-    ``_``) when a tenant is configured.
-    """
-    schema = _setting("DATABASE_SCHEMA")
-    if schema:
-        return schema
-    tenant = tenant_id()
-    return "tenant_" + re.sub(r"[.-]", "_", tenant.lower()) if tenant else ""
+__all__ = ("api_config", "tenant_id", "database_schema")

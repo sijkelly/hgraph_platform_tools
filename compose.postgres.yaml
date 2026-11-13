@@ -1,8 +1,8 @@
-# Adds a PostgreSQL database for the order log, trade bookings and proposals.
+# Adds a PostgreSQL database for orders, trade bookings, proposals, reference data and entitlements.
 #
 #   POSTGRES_PASSWORD=<choose one> docker compose -f compose.yaml -f compose.postgres.yaml up --build
 #
-# Reference data (parties, portfolios, credit) and entitlements stay in SQLite in the API's volume.
+# Booked trade files still go to the API's volume.
 
 services:
   postgres:

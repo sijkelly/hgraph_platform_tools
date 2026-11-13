@@ -6,8 +6,8 @@ using a forward propagated graph approach.
 
 import argparse
 import logging
+import os
 import re
-import sqlite3
 from collections import deque
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
@@ -80,18 +80,23 @@ def dispatch_event(event_name: str, payload: Any) -> None:
             # In a real system, each handler would call dispatch_event as needed.
 
 
-def get_db_connection(db_path: str | None = None) -> sqlite3.Connection:
-    """Create and return a connection to the SQLite database.
+def get_db_connection(db_path: str | None = None) -> Any:
+    """Create and return a connection to the entitlements database.
 
-    :param db_path: Path to the SQLite database file.
-    :returns: Database connection object.
+    :param db_path: SQLite file path or PostgreSQL URL.  By default, the PostgreSQL database
+        configured with ``DATABASE_URL`` (in the tenant's schema), or else the SQLite file
+        ``ENTITLEMENTS_DB_PATH``.
+    :returns: Database connection object with the ``sqlite3`` connection interface.
     """
+    from hgraph_oms.db import connect
+    from hgraph_oms.settings import database_target
+
     if db_path is None:
-        db_path = config["ENTITLEMENTS_DB_PATH"]
-    return sqlite3.connect(db_path)
+        db_path = database_target(os.getenv("ENTITLEMENTS_DB_PATH") or config["ENTITLEMENTS_DB_PATH"])
+    return connect(db_path)
 
 
-def initialize_db(conn: sqlite3.Connection) -> None:
+def initialize_db(conn: Any) -> None:
     """Initialise the entitlements database table if it does not exist.
 
     :param conn: The database connection.
@@ -106,7 +111,7 @@ def initialize_db(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
-def get_user_role(conn: sqlite3.Connection, user_id: str) -> Optional[str]:
+def get_user_role(conn: Any, user_id: str) -> Optional[str]:
     """Retrieve the role of a user from the entitlements database.
 
     :param conn: The database connection.
@@ -119,7 +124,7 @@ def get_user_role(conn: sqlite3.Connection, user_id: str) -> Optional[str]:
     return result[0] if result else None
 
 
-def update_user_role(conn: sqlite3.Connection, user_id: str, role: str) -> None:
+def update_user_role(conn: Any, user_id: str, role: str) -> None:
     """Update or insert a user's role in the entitlements database and dispatch an event.
 
     :param conn: The database connection.

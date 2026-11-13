@@ -25,10 +25,9 @@ from hgraph_static_admin.party_store import (
 
 
 @pytest.fixture()
-def db_path(tmp_path):
-    path = str(tmp_path / "test_party.db")
-    init_party_db(path)
-    return path
+def db_path(oms_db):
+    init_party_db(oms_db)
+    return oms_db
 
 
 @pytest.fixture()

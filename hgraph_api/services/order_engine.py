@@ -17,11 +17,10 @@ from typing import Any
 from fastapi import FastAPI
 
 from hgraph_api.config import api_config
-from hgraph_api.services.tenancy import database_schema
 from hgraph_oms.booking import BOOKED, PENDING, TradeBooker, TradeBooking
-from hgraph_oms.db import with_schema
 from hgraph_oms.delivery import TradePublisher, TradeSender, kafka_trade_sender
 from hgraph_oms.engine import OrderEngine
+from hgraph_oms.settings import database_target
 from hgraph_oms.model import CreditPosition, OrderDetails, OrderSnapshot
 
 __all__ = (
@@ -61,17 +60,18 @@ def _setting(name: str, default: str = "") -> str:
 
 
 def order_db_target(app: FastAPI | None, db_dir: str, filename: str) -> str:
-    """Return where one of the order core's stores keeps its data.
+    """Return where one of the API's stores keeps its data.
 
     With ``DATABASE_URL`` set (or ``app.state.database_url``) every store uses that PostgreSQL
     database, in the tenant's own schema if there is one; otherwise each has its own SQLite
     file in ``db_dir``.
     """
-    database_url = (getattr(app.state, "database_url", None) if app is not None else None) or _setting("DATABASE_URL")
-    if not database_url:
-        return os.path.join(db_dir, filename)
-    schema = getattr(app.state, "database_schema", None) if app is not None else None
-    return with_schema(database_url, database_schema() if schema is None else schema)
+    state = app.state if app is not None else None
+    return database_target(
+        os.path.join(db_dir, filename),
+        database_url=getattr(state, "database_url", None),
+        schema=getattr(state, "database_schema", None),
+    )
 
 
 def _trade_publisher(app: FastAPI, booker: TradeBooker) -> TradePublisher | None:

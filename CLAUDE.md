@@ -55,8 +55,9 @@ uv run pytest tests/ -q
 
 ## Testing
 
-The order core's stores (``hgraph_oms``) are written against ``hgraph_oms.db.Database`` with ``?`` placeholders,
-never ``sqlite3`` directly. Tests that take the ``oms_db`` fixture run on SQLite and, when ``TEST_POSTGRES_URL``
+The order core's stores (``hgraph_oms``) are written against ``hgraph_oms.db.Database`` with ``?`` placeholders.
+The reference-data and entitlement stores open connections with ``hgraph_oms.db.connect``, never
+``sqlite3.connect``, and keep their SQL to what both SQLite and PostgreSQL accept. Tests that take the ``oms_db`` fixture run on SQLite and, when ``TEST_POSTGRES_URL``
 is set (CI sets it), on PostgreSQL as well.
 
 Tests live in ``tests/`` and mirror the source directory structure:
@@ -149,6 +150,7 @@ hgraph_platform_tools/
 │   ├── pre_trade.py                    # Credit and entitlement checks (pure)
 │   ├── order_book.py                   # hgraph compute_node: checks + state machine
 │   ├── db.py                           # Database access: SQLite path or postgresql:// URL
+│   ├── settings.py                     # TENANT_ID, DATABASE_URL -> where a store keeps its data
 │   ├── event_log.py                    # Append-only event log and replay
 │   ├── proposals.py                    # Orders drafted by an agent, awaiting a person's decision
 │   ├── trades.py                       # Fills -> trade tickets -> booking pipeline input (pure)

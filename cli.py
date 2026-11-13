@@ -267,13 +267,13 @@ def _add_party_subscribe_parser(subparsers: argparse._SubParsersAction) -> None:
 
 def _run_party_subscribe(args: argparse.Namespace) -> int:
     from secure_config import config
+    from hgraph_oms.settings import database_target
     from hgraph_static_admin.party_store import init_party_db
 
-    db_path = args.db_path or config["PARTY_DB_PATH"]
+    db_path = args.db_path or database_target(config["PARTY_DB_PATH"])
 
     if args.init_db:
         init_party_db(db_path)
-        logger.info("Party database initialised at %s", db_path)
         if not args.bootstrap_servers:
             return 0  # Just init, don't start subscriber
 
@@ -312,13 +312,13 @@ def _add_portfolio_subscribe_parser(subparsers: argparse._SubParsersAction) -> N
 
 def _run_portfolio_subscribe(args: argparse.Namespace) -> int:
     from secure_config import config
+    from hgraph_oms.settings import database_target
     from hgraph_static_admin.portfolio_store import init_portfolio_db
 
-    db_path = args.db_path or config["PORTFOLIO_DB_PATH"]
+    db_path = args.db_path or database_target(config["PORTFOLIO_DB_PATH"])
 
     if args.init_db:
         init_portfolio_db(db_path)
-        logger.info("Portfolio database initialised at %s", db_path)
         if not args.bootstrap_servers:
             return 0  # Just init, don't start subscriber
 
@@ -400,13 +400,13 @@ def _add_credit_subscribe_parser(subparsers: argparse._SubParsersAction) -> None
 
 def _run_credit_subscribe(args: argparse.Namespace) -> int:
     from secure_config import config
+    from hgraph_oms.settings import database_target
     from hgraph_static_admin.credit_store import init_credit_db
 
-    db_path = args.db_path or config["CREDIT_DB_PATH"]
+    db_path = args.db_path or database_target(config["CREDIT_DB_PATH"])
 
     if args.init_db:
         init_credit_db(db_path)
-        logger.info("Credit database initialised at %s", db_path)
         if not args.bootstrap_servers:
             return 0  # Just init, don't start subscriber
 
