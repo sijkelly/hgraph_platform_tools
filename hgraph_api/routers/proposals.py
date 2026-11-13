@@ -18,7 +18,7 @@ from hgraph_api.schemas.orders import (
     ProposalResponse,
     ProposeOrderRequest,
 )
-from hgraph_api.services.order_engine import new_order_id
+from hgraph_api.services.order_engine import new_order_id, order_db_target
 from hgraph_oms.proposals import CONFIRMED, DISMISSED, PROPOSED, OrderProposal, ProposalStore
 
 __all__ = ("router", "PROPOSALS_DB")
@@ -31,7 +31,14 @@ PROPOSALS_DB = "order_proposals.db"
 
 
 def _store(request: Request) -> ProposalStore:
-    return ProposalStore(os.path.join(getattr(request.app.state, "db_dir", "."), PROPOSALS_DB))
+    app = request.app
+    target = order_db_target(app, getattr(app.state, "db_dir", "."), PROPOSALS_DB)
+    # Opening a store creates its table, so keep one per database rather than one per request
+    stores: dict[str, ProposalStore] = app.state.__dict__.setdefault("_proposal_stores", {})
+    store = stores.get(target)
+    if store is None:
+        store = stores[target] = ProposalStore(target)
+    return store
 
 
 def _user_id(request: Request) -> str:

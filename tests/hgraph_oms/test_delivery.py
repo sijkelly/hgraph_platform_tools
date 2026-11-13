@@ -36,8 +36,8 @@ def _ticket(n: int):
 
 
 @pytest.fixture
-def booker(tmp_path) -> TradeBooker:
-    return TradeBooker(str(tmp_path / "trade_bookings.db"), str(tmp_path / "booked"), internal_party="OURCO")
+def booker(oms_db, tmp_path) -> TradeBooker:
+    return TradeBooker(oms_db, str(tmp_path / "booked"), internal_party="OURCO")
 
 
 @pytest.fixture

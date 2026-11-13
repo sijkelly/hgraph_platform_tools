@@ -23,8 +23,8 @@ def _new(order_id, user_id="trader1", quantity=100.0, price=10.0) -> NewOrder:
 
 
 @pytest.fixture
-def db_path(tmp_path):
-    return str(tmp_path / "order_events.db")
+def db_path(oms_db):
+    return oms_db
 
 
 @pytest.fixture

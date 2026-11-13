@@ -42,7 +42,7 @@ from hgraph_static_admin.portfolio_store import (
     upsert_portfolio,
 )
 from hgraph_entitlements import get_db_connection, initialize_db, update_user_role
-from hgraph_api.services.order_engine import ORDER_EVENTS_DB, details_from_fields, new_order_id
+from hgraph_api.services.order_engine import ORDER_EVENTS_DB, details_from_fields, new_order_id, order_db_target
 from hgraph_oms.engine import OrderEngine
 from hgraph_oms.model import NewOrder
 
@@ -53,7 +53,7 @@ def seed(db_dir: str) -> None:
     credit_db = os.path.join(db_dir, "credit_data.db")
     party_db = os.path.join(db_dir, "party_data.db")
     portfolio_db = os.path.join(db_dir, "portfolio_data.db")
-    order_db = os.path.join(db_dir, ORDER_EVENTS_DB)
+    order_db = order_db_target(None, db_dir, ORDER_EVENTS_DB)
 
     # -----------------------------------------------------------------------
     # Parties

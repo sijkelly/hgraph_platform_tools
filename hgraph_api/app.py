@@ -18,6 +18,7 @@ from hgraph_api.middleware.auth import AuthMiddleware
 from hgraph_api.services.order_engine import stop_order_engine
 from hgraph_api.services.tokens import HEADER, auth_settings
 from hgraph_api.websockets import credit_ws, orders_ws
+from hgraph_oms.db import close_databases
 
 __all__ = ("create_app",)
 
@@ -29,6 +30,7 @@ async def _lifespan(app: FastAPI):
     # The order engine starts on first use (see get_order_engine); stop it on shutdown
     yield
     stop_order_engine(app)
+    close_databases()
 
 
 def create_app() -> FastAPI:

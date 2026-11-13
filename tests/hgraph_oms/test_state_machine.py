@@ -250,8 +250,8 @@ def test_message_from_dict_rejects_unknown_type():
         message_from_dict({"type": "DeleteEverything", "order_id": "O1"})
 
 
-def test_replay_rebuilds_orders_from_log(tmp_path):
-    db_path = str(tmp_path / "events.db")
+def test_replay_rebuilds_orders_from_log(oms_db):
+    db_path = oms_db
     init_event_log(db_path)
 
     orders: dict[str, OrderSnapshot] = {}

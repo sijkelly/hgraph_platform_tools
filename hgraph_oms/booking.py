@@ -4,7 +4,7 @@ Books trade tickets through the booking pipeline and records the outcome.
 :class:`TradeBooker` is the engine's trade sink.  For each ticket it builds the
 pipeline input, maps it to the FpML-like trade message and writes it to the
 output directory — the same steps as ``hgraph-tools book`` — then records in
-SQLite whether the trade was booked or why it failed.
+the database whether the trade was booked or why it failed.
 
 Booking is idempotent per trade ID: a ticket that is already booked is skipped,
 and one that failed is tried again.  That lets the engine re-offer every fill
@@ -12,11 +12,11 @@ from its event log on start without creating duplicates.
 """
 
 import logging
-import sqlite3
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Iterable
 
+from hgraph_oms.db import Database, get_database
 from hgraph_oms.trades import DEFAULT_PRODUCTS, ProductSpec, TradeTicket, ticket_to_trade_data
 
 __all__ = ("BOOKED", "FAILED", "PENDING", "SENT", "TradeBooking", "init_booking_db", "TradeBooker")
@@ -32,11 +32,12 @@ SENT = "Sent"
 
 _CREATE_TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS trade_bookings (
+    {seq_column}
     trade_id     TEXT PRIMARY KEY,
     order_id     TEXT NOT NULL,
     fill_id      TEXT NOT NULL,
-    quantity     REAL NOT NULL,
-    price        REAL NOT NULL,
+    quantity     DOUBLE PRECISION NOT NULL,
+    price        DOUBLE PRECISION NOT NULL,
     executed_at  TEXT NOT NULL DEFAULT '',
     status       TEXT NOT NULL,
     detail       TEXT NOT NULL DEFAULT '',
@@ -57,6 +58,12 @@ CREATE TABLE IF NOT EXISTS trade_deliveries (
 """
 
 _COLUMNS = "trade_id, order_id, fill_id, quantity, price, executed_at, status, detail, updated_at"
+_UPSERT = (
+    f"INSERT INTO trade_bookings ({_COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) "
+    "ON CONFLICT(trade_id) DO UPDATE SET order_id = excluded.order_id, fill_id = excluded.fill_id, "
+    "quantity = excluded.quantity, price = excluded.price, executed_at = excluded.executed_at, "
+    "status = excluded.status, detail = excluded.detail, updated_at = excluded.updated_at"
+)
 _SELECT = (
     "SELECT b.trade_id, b.order_id, b.fill_id, b.quantity, b.price, b.executed_at, b.status, b.detail, b.updated_at, "
     "COALESCE(d.status, '') AS delivery_status, COALESCE(d.attempts, 0) AS delivery_attempts, "
@@ -91,23 +98,24 @@ class TradeBooking:
     delivery_updated_at: str = ""
 
 
-def init_booking_db(db_path: str) -> None:
-    """Create the ``trade_bookings`` and ``trade_deliveries`` tables if they do not exist."""
-    conn = sqlite3.connect(db_path)
-    try:
-        conn.execute("PRAGMA journal_mode = WAL")
-        conn.execute(_CREATE_TABLE_SQL)
-        conn.execute(_CREATE_IDX_ORDER_ID)
-        conn.execute(_CREATE_DELIVERIES_SQL)
-        conn.commit()
-    finally:
-        conn.close()
+def init_booking_db(db: str | Database) -> None:
+    """Create the ``trade_bookings`` and ``trade_deliveries`` tables if they do not exist.
+
+    :param db: SQLite file path, PostgreSQL URL, or an open :class:`~hgraph_oms.db.Database`.
+    """
+    database = get_database(db)
+    database.create(
+        _CREATE_TABLE_SQL.format(seq_column=database.seq_column),
+        _CREATE_IDX_ORDER_ID,
+        _CREATE_DELIVERIES_SQL,
+    )
 
 
 class TradeBooker:
-    """Books tickets into ``output_dir`` and records each outcome in ``db_path``.
+    """Books tickets into ``output_dir`` and records each outcome in the database.
 
-    :param db_path: SQLite file for the booking records.
+    :param db: SQLite file path, PostgreSQL URL, or an open :class:`~hgraph_oms.db.Database`,
+        for the booking records.
     :param output_dir: Directory the booked trade messages are written to.
     :param internal_party: Our own legal entity on every trade.
     :param products: Product reference data used to resolve instrument names.
@@ -115,17 +123,17 @@ class TradeBooker:
 
     def __init__(
         self,
-        db_path: str,
+        db: str | Database,
         output_dir: str,
         *,
         internal_party: str,
         products: Iterable[ProductSpec] = DEFAULT_PRODUCTS,
     ):
-        self.db_path = db_path
+        self._db = get_database(db)
         self.output_dir = output_dir
         self.internal_party = internal_party
         self.products = tuple(products)
-        init_booking_db(db_path)
+        init_booking_db(self._db)
 
     def book(self, tickets: Iterable[TradeTicket]) -> list[TradeBooking]:
         """Book each ticket that is not already booked and return the outcomes of those attempted.
@@ -177,17 +185,12 @@ class TradeBooker:
         :param sent: ``True`` if the downstream system acknowledged the trade; otherwise it stays pending.
         :param detail: Where it was sent, or why the attempt failed.
         """
-        conn = sqlite3.connect(self.db_path)
-        try:
-            conn.execute(
-                "INSERT INTO trade_deliveries (trade_id, status, attempts, detail, updated_at) VALUES (?, ?, 1, ?, ?) "
-                "ON CONFLICT(trade_id) DO UPDATE SET status = excluded.status, attempts = attempts + 1, "
-                "detail = excluded.detail, updated_at = excluded.updated_at",
-                (trade_id, SENT if sent else PENDING, detail, datetime.now(timezone.utc).isoformat()),
-            )
-            conn.commit()
-        finally:
-            conn.close()
+        self._db.execute(
+            "INSERT INTO trade_deliveries (trade_id, status, attempts, detail, updated_at) VALUES (?, ?, 1, ?, ?) "
+            "ON CONFLICT(trade_id) DO UPDATE SET status = excluded.status, "
+            "attempts = trade_deliveries.attempts + 1, detail = excluded.detail, updated_at = excluded.updated_at",
+            (trade_id, SENT if sent else PENDING, detail, datetime.now(timezone.utc).isoformat()),
+        )
 
     # ------------------------------------------------------------------
     # Internals
@@ -220,32 +223,22 @@ class TradeBooker:
             detail=detail,
             updated_at=datetime.now(timezone.utc).isoformat(),
         )
-        conn = sqlite3.connect(self.db_path)
-        try:
-            conn.execute(
-                f"INSERT OR REPLACE INTO trade_bookings ({_COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (
-                    booking.trade_id,
-                    booking.order_id,
-                    booking.fill_id,
-                    booking.quantity,
-                    booking.price,
-                    booking.executed_at,
-                    booking.status,
-                    booking.detail,
-                    booking.updated_at,
-                ),
-            )
-            conn.commit()
-        finally:
-            conn.close()
+        self._db.execute(
+            _UPSERT,
+            (
+                booking.trade_id,
+                booking.order_id,
+                booking.fill_id,
+                booking.quantity,
+                booking.price,
+                booking.executed_at,
+                booking.status,
+                booking.detail,
+                booking.updated_at,
+            ),
+        )
         return booking
 
     def _query(self, where: str, params: tuple) -> list[TradeBooking]:
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
-        try:
-            rows = conn.execute(f"{_SELECT} {where} ORDER BY b.rowid", params).fetchall()
-        finally:
-            conn.close()
-        return [TradeBooking(**dict(row)) for row in rows]
+        rows = self._db.query(f"{_SELECT} {where} ORDER BY {self._db.row_order('b')}", params)
+        return [TradeBooking(**row) for row in rows]

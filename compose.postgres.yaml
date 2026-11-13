@@ -1,0 +1,31 @@
+# Adds a PostgreSQL database for the order log, trade bookings and proposals.
+#
+#   POSTGRES_PASSWORD=<choose one> docker compose -f compose.yaml -f compose.postgres.yaml up --build
+#
+# Reference data (parties, portfolios, credit) and entitlements stay in SQLite in the API's volume.
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: oms
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      POSTGRES_DB: oms
+    volumes:
+      - oms-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U oms -d oms"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  api:
+    environment:
+      DATABASE_URL: postgresql://oms:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@postgres:5432/oms
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  oms-postgres:

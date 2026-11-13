@@ -26,6 +26,7 @@ from typing import Callable
 from hgraph import EvaluationMode, run_graph
 
 from hgraph_oms.engine_graph import Envelope, PermissionUpdate, Stop, build_engine_graph
+from hgraph_oms.db import get_database
 from hgraph_oms.event_log import append_events, init_event_log, read_events, replay
 from hgraph_oms.trades import TradeTicket, tickets_from_events
 from hgraph_oms.model import CreditPosition, CreditRemoved, OmsInput, OrderMessage, OrderResponse, OrderSnapshot
@@ -34,11 +35,13 @@ __all__ = ("OrderEngine",)
 
 logger = logging.getLogger(__name__)
 
+_ENGINE_LOCK = "order-engine"
+
 
 class OrderEngine:
     """Runs the order book graph in real time and answers submitted messages.
 
-    :param db_path: SQLite file holding the order event log.
+    :param db_path: SQLite file path or PostgreSQL URL of the database holding the order event log.
     :param enforce_entitlements: When ``True``, users must hold ``execute_trade``
         (see :meth:`set_permissions`) for their messages to be applied.
     :param trade_sink: Called on the graph thread with the trade tickets of each batch's fills,
@@ -54,6 +57,7 @@ class OrderEngine:
         trade_sink: Callable[[tuple[TradeTicket, ...]], object] | None = None,
     ):
         self.db_path = db_path
+        self._db = get_database(db_path)
         self.enforce_entitlements = enforce_entitlements
         self._trade_sink = trade_sink
         self._orders: dict[str, OrderSnapshot] = {}
@@ -77,17 +81,25 @@ class OrderEngine:
         if self._thread is not None:
             raise RuntimeError("Order engine already started")
 
-        init_event_log(self.db_path)
-        events = read_events(self.db_path)
-        self._orders = replay(events)
-        logger.info("Order engine recovered %d order(s) from %s", len(self._orders), self.db_path)
-        # Re-offer every logged fill so a trade logged but not handed on before a crash is not lost
-        self._send_trades(tickets_from_events(events))
+        # Two engines writing one log would each hold a different view of the orders
+        if not self._db.try_lock(_ENGINE_LOCK):
+            raise RuntimeError(f"Another order engine is already running against {self._db.description}")
+        try:
+            init_event_log(self._db)
+            events = read_events(self._db)
+            self._orders = replay(events)
+            logger.info("Order engine recovered %d order(s) from %s", len(self._orders), self._db.description)
+            # Re-offer every logged fill so a trade logged but not handed on before a crash is not lost
+            self._send_trades(tickets_from_events(events))
 
-        self._thread = threading.Thread(target=self._run, name="order-engine", daemon=True)
-        self._thread.start()
-        if not self._ready.wait(timeout) or self._error is not None:
-            raise RuntimeError("Order engine failed to start") from self._error
+            self._thread = threading.Thread(target=self._run, name="order-engine", daemon=True)
+            self._thread.start()
+            if not self._ready.wait(timeout) or self._error is not None:
+                raise RuntimeError("Order engine failed to start") from self._error
+        except BaseException:
+            if self._thread is None or not self._thread.is_alive():
+                self._db.unlock(_ENGINE_LOCK)
+            raise
 
     def stop(self, *, timeout: float = 10.0) -> None:
         """Stop the graph and wait for its thread to finish. Safe to call more than once."""
@@ -99,6 +111,8 @@ class OrderEngine:
         thread.join(timeout)
         self._ready.clear()
         self._sender = None
+        if not thread.is_alive():
+            self._db.unlock(_ENGINE_LOCK)
 
     @property
     def is_running(self) -> bool:
@@ -214,7 +228,7 @@ class OrderEngine:
         tickets: tuple[TradeTicket, ...] = (),
     ) -> None:
         """Runs on the graph thread for every batch: log, hand on trades, publish, notify, answer callers."""
-        append_events(self.db_path, responses)
+        append_events(self._db, responses)
         self._send_trades(tickets)
         with self._lock:
             self._orders.update(changed)

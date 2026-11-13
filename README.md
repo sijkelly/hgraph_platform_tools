@@ -46,6 +46,18 @@ notification pipelines for commodity and financial trade processing.
   tools to read orders, trades, counterparties, credit and products and to draft proposals. There is no tool
   that submits, amends, fills or cancels an order.
 
+### Database
+- **SQLite by default** — With nothing configured, the order log, trade bookings and proposals are SQLite files
+  in the API's database directory. Good for development and demos.
+- **PostgreSQL** — Set `DATABASE_URL=postgresql://user:password@host:5432/dbname` and those three stores use
+  that database instead (install the `postgres` extra). Tables are created on first start. Nothing is migrated
+  from existing SQLite files.
+- **One engine per database** — The order engine holds a PostgreSQL advisory lock on its schema, so a second
+  API instance pointed at the same database refuses to process orders (`503`) rather than run a second,
+  diverging order book. After a crash the lock is released with the connection and a restart takes over.
+- **Still SQLite** — Reference data (parties, portfolios, credit) and entitlements. These are fed from
+  upstream systems and stay in files in the database directory.
+
 ### Authentication
 - **Development (`AUTH_MODE=header`, the default)** — The caller is whoever the `X-User-Id` header says.
   Nothing verifies it, so use this only on a developer machine.
@@ -137,6 +149,12 @@ docker build --build-context hg_oap=../hg_oap -t hgraph-oms .
 docker run -p 8000:8000 -v oms-data:/data hgraph-oms
 ```
 
+To run it with PostgreSQL for the order log, bookings and proposals:
+
+```bash
+POSTGRES_PASSWORD=choose-one docker compose -f compose.yaml -f compose.postgres.yaml up --build -d
+```
+
 The image is built for `linux/amd64`, because hgraph publishes Linux wheels for x86-64 only; on Apple Silicon
 it runs under emulation. Other commands run the same way, e.g. `docker run --rm hgraph-oms hgraph-tools --help`.
 
@@ -211,6 +229,8 @@ uv pip install -e ".[notification]"   # Jinja2 email templates
 uv pip install -e ".[database]"       # MongoDB
 uv pip install -e ".[web]"            # HTTP requests
 uv pip install -e ".[api]"            # FastAPI service and Claude order parsing
+uv pip install -e ".[ai]"             # MCP server for AI agents
+uv pip install -e ".[postgres]"       # PostgreSQL for the order core (DATABASE_URL)
 uv pip install -e ".[oap]"            # hg_oap domain library (from ../hg_oap)
 uv pip install -e ".[test]"           # pytest, mypy, black, coverage
 uv pip install -e ".[dev]"            # Everything

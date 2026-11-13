@@ -9,11 +9,12 @@ began with an agent can be traced back to what the agent saw.
 """
 
 import json
-import sqlite3
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
+
+from hgraph_oms.db import Database, get_database
 
 __all__ = ("PROPOSED", "CONFIRMED", "DISMISSED", "OrderProposal", "ProposalStore")
 
@@ -23,6 +24,7 @@ DISMISSED = "Dismissed"
 
 _CREATE_TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS order_proposals (
+    {seq_column}
     proposal_id  TEXT PRIMARY KEY,
     status       TEXT NOT NULL,
     fields       TEXT NOT NULL,
@@ -73,20 +75,15 @@ def _now() -> str:
 
 
 class ProposalStore:
-    """SQLite store of order proposals.
+    """Store of order proposals.
 
-    :param db_path: SQLite file; the table is created if it does not exist.
+    :param db: SQLite file path, PostgreSQL URL, or an open :class:`~hgraph_oms.db.Database`.
+        The table is created if it does not exist.
     """
 
-    def __init__(self, db_path: str):
-        self.db_path = db_path
-        conn = sqlite3.connect(db_path)
-        try:
-            conn.execute("PRAGMA journal_mode = WAL")
-            conn.execute(_CREATE_TABLE_SQL)
-            conn.commit()
-        finally:
-            conn.close()
+    def __init__(self, db: str | Database):
+        self._db = get_database(db)
+        self._db.create(_CREATE_TABLE_SQL.format(seq_column=self._db.seq_column))
 
     def create(
         self, fields: dict[str, Any], *, proposed_by: str, source_text: str = "", rationale: str = ""
@@ -101,23 +98,18 @@ class ProposalStore:
             rationale=rationale,
             created_at=_now(),
         )
-        conn = sqlite3.connect(self.db_path)
-        try:
-            conn.execute(
-                f"INSERT INTO order_proposals ({_COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?, '', '', '', '')",
-                (
-                    proposal.proposal_id,
-                    proposal.status,
-                    json.dumps(proposal.fields),
-                    proposal.proposed_by,
-                    proposal.source_text,
-                    proposal.rationale,
-                    proposal.created_at,
-                ),
-            )
-            conn.commit()
-        finally:
-            conn.close()
+        self._db.execute(
+            f"INSERT INTO order_proposals ({_COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?, '', '', '', '')",
+            (
+                proposal.proposal_id,
+                proposal.status,
+                json.dumps(proposal.fields),
+                proposal.proposed_by,
+                proposal.source_text,
+                proposal.rationale,
+                proposal.created_at,
+            ),
+        )
         return proposal
 
     def get(self, proposal_id: str) -> OrderProposal | None:
@@ -150,34 +142,23 @@ class ProposalStore:
         return self._transition(proposal_id, CONFIRMED, PROPOSED, decided_by="", decided_at="", order_id="", reason="")
 
     def _transition(self, proposal_id: str, from_status: str, to_status: str, **values: str) -> OrderProposal | None:
-        conn = sqlite3.connect(self.db_path)
-        try:
-            cursor = conn.execute(
-                "UPDATE order_proposals SET status = ?, decided_by = ?, decided_at = ?, order_id = ?, reason = ? "
-                "WHERE proposal_id = ? AND status = ?",
-                (
-                    to_status,
-                    values["decided_by"],
-                    values["decided_at"],
-                    values["order_id"],
-                    values["reason"],
-                    proposal_id,
-                    from_status,
-                ),
-            )
-            conn.commit()
-            changed = cursor.rowcount == 1
-        finally:
-            conn.close()
-        return self.get(proposal_id) if changed else None
+        changed = self._db.execute(
+            "UPDATE order_proposals SET status = ?, decided_by = ?, decided_at = ?, order_id = ?, reason = ? "
+            "WHERE proposal_id = ? AND status = ?",
+            (
+                to_status,
+                values["decided_by"],
+                values["decided_at"],
+                values["order_id"],
+                values["reason"],
+                proposal_id,
+                from_status,
+            ),
+        )
+        return self.get(proposal_id) if changed == 1 else None
 
     def _query(self, where: str, params: tuple) -> list[OrderProposal]:
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
-        try:
-            rows = conn.execute(
-                f"SELECT {_COLUMNS} FROM order_proposals {where} ORDER BY rowid DESC", params
-            ).fetchall()
-        finally:
-            conn.close()
-        return [OrderProposal(**{**dict(row), "fields": json.loads(row["fields"])}) for row in rows]
+        rows = self._db.query(
+            f"SELECT {_COLUMNS} FROM order_proposals {where} ORDER BY {self._db.row_order()} DESC", params
+        )
+        return [OrderProposal(**{**row, "fields": json.loads(row["fields"])}) for row in rows]

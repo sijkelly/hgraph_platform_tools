@@ -28,7 +28,7 @@ COPY . .
 # Exactly the versions in uv.lock; nothing editable, so /src is not needed at run time
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev --no-editable \
-        --extra api --extra ai --extra messaging --extra oap
+        --extra api --extra ai --extra messaging --extra oap --extra postgres
 
 
 FROM --platform=linux/amd64 python:3.12-slim-bookworm

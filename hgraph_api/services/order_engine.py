@@ -25,6 +25,7 @@ from hgraph_oms.model import CreditPosition, OrderDetails, OrderSnapshot
 __all__ = (
     "ORDER_EVENTS_DB",
     "TRADE_BOOKINGS_DB",
+    "order_db_target",
     "get_order_engine",
     "get_trade_booker",
     "stop_order_engine",
@@ -55,6 +56,16 @@ _engine_lock = threading.Lock()
 def _setting(name: str, default: str = "") -> str:
     """Read a setting from the environment now, falling back to the value loaded at import."""
     return os.getenv(name) or api_config.get(name) or default
+
+
+def order_db_target(app: FastAPI | None, db_dir: str, filename: str) -> str:
+    """Return where one of the order core's stores keeps its data.
+
+    With ``DATABASE_URL`` set (or ``app.state.database_url``) every store uses that PostgreSQL
+    database; otherwise each has its own SQLite file in ``db_dir``.
+    """
+    database_url = getattr(app.state, "database_url", None) if app is not None else None
+    return database_url or _setting("DATABASE_URL") or os.path.join(db_dir, filename)
 
 
 def _trade_publisher(app: FastAPI, booker: TradeBooker) -> TradePublisher | None:
@@ -91,7 +102,7 @@ def get_order_engine(app: FastAPI) -> OrderEngine:
         db_dir = getattr(app.state, "db_dir", ".")
         # Every fill is booked as a trade; TRADE_OUTPUT_DIR overrides where the trade files go
         booker = TradeBooker(
-            os.path.join(db_dir, TRADE_BOOKINGS_DB),
+            order_db_target(app, db_dir, TRADE_BOOKINGS_DB),
             _setting("TRADE_OUTPUT_DIR", os.path.join(db_dir, "booked_trades")),
             internal_party=_setting("INTERNAL_PARTY_ID", "INTERNAL"),
         )
@@ -104,7 +115,7 @@ def get_order_engine(app: FastAPI) -> OrderEngine:
                 publisher.notify()
 
         engine = OrderEngine(
-            os.path.join(db_dir, ORDER_EVENTS_DB),
+            order_db_target(app, db_dir, ORDER_EVENTS_DB),
             enforce_entitlements=bool(getattr(app.state, "enforce_entitlements", False)),
             trade_sink=trade_sink,
         )

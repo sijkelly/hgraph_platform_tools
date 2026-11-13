@@ -1,5 +1,5 @@
 """
-Append-only SQLite log of order messages and their outcomes.
+Append-only log of order messages and their outcomes.
 
 Every message the order book processes is written here with whether it was
 accepted and why not.  The log is the system of record: :func:`replay` rebuilds
@@ -8,11 +8,11 @@ an order's history can be audited.
 """
 
 import json
-import sqlite3
 from dataclasses import asdict
 from datetime import datetime, timezone
 from typing import Any, Iterable, NamedTuple
 
+from hgraph_oms.db import Database, get_database
 from hgraph_oms.model import (
     AcceptOrder,
     AmendOrder,
@@ -53,7 +53,7 @@ _MESSAGE_TYPES: dict[str, type[OrderMessage]] = {
 
 _CREATE_TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS order_events (
-    seq           INTEGER PRIMARY KEY AUTOINCREMENT,
+    seq           {serial_primary_key},
     recorded_at   TEXT    NOT NULL,
     order_id      TEXT    NOT NULL,
     user_id       TEXT    NOT NULL DEFAULT '',
@@ -66,16 +66,16 @@ CREATE TABLE IF NOT EXISTS order_events (
 _CREATE_IDX_ORDER_ID = "CREATE INDEX IF NOT EXISTS idx_order_events_order_id ON order_events (order_id)"
 
 
-def init_event_log(db_path: str) -> None:
-    """Create the ``order_events`` table if it does not exist."""
-    conn = sqlite3.connect(db_path)
-    try:
-        conn.execute("PRAGMA journal_mode = WAL")
-        conn.execute(_CREATE_TABLE_SQL)
-        conn.execute(_CREATE_IDX_ORDER_ID)
-        conn.commit()
-    finally:
-        conn.close()
+def init_event_log(db: str | Database) -> None:
+    """Create the ``order_events`` table if it does not exist.
+
+    :param db: SQLite file path, PostgreSQL URL, or an open :class:`~hgraph_oms.db.Database`.
+    """
+    database = get_database(db)
+    database.create(
+        _CREATE_TABLE_SQL.format(serial_primary_key=database.serial_primary_key),
+        _CREATE_IDX_ORDER_ID,
+    )
 
 
 def message_to_dict(message: OrderMessage) -> dict[str, Any]:
@@ -101,7 +101,9 @@ def message_from_dict(data: dict[str, Any]) -> OrderMessage:
     return cls(**fields)
 
 
-def append_events(db_path: str, responses: Iterable[OrderResponse], *, recorded_at: datetime | None = None) -> None:
+def append_events(
+    db: str | Database, responses: Iterable[OrderResponse], *, recorded_at: datetime | None = None
+) -> None:
     """Append one row per response, in order, in a single transaction.
 
     Each row is stamped with the response's ``processed_at``, falling back to ``recorded_at`` or now.
@@ -119,33 +121,29 @@ def append_events(db_path: str, responses: Iterable[OrderResponse], *, recorded_
         )
         for r in responses
     ]
-    conn = sqlite3.connect(db_path)
-    try:
-        conn.executemany(
-            "INSERT INTO order_events (recorded_at, order_id, user_id, message_type, payload, accepted, reason) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?)",
-            rows,
-        )
-        conn.commit()
-    finally:
-        conn.close()
+    get_database(db).executemany(
+        "INSERT INTO order_events (recorded_at, order_id, user_id, message_type, payload, accepted, reason) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        rows,
+    )
 
 
-def read_events(db_path: str, *, order_id: str | None = None) -> list[LoggedEvent]:
+def read_events(db: str | Database, *, order_id: str | None = None) -> list[LoggedEvent]:
     """Return logged events in the order they were processed, optionally for one order."""
     query = "SELECT payload, accepted, reason, recorded_at FROM order_events"
     params: tuple[str, ...] = ()
     if order_id is not None:
         query += " WHERE order_id = ?"
         params = (order_id,)
-    conn = sqlite3.connect(db_path)
-    try:
-        rows = conn.execute(query + " ORDER BY seq", params).fetchall()
-    finally:
-        conn.close()
+    rows = get_database(db).query(query + " ORDER BY seq", params)
     return [
-        LoggedEvent(message_from_dict(json.loads(payload)), bool(accepted), reason, datetime.fromisoformat(recorded_at))
-        for payload, accepted, reason, recorded_at in rows
+        LoggedEvent(
+            message_from_dict(json.loads(row["payload"])),
+            bool(row["accepted"]),
+            row["reason"],
+            datetime.fromisoformat(row["recorded_at"]),
+        )
+        for row in rows
     ]
 
 

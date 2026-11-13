@@ -55,6 +55,10 @@ uv run pytest tests/ -q
 
 ## Testing
 
+The order core's stores (``hgraph_oms``) are written against ``hgraph_oms.db.Database`` with ``?`` placeholders,
+never ``sqlite3`` directly. Tests that take the ``oms_db`` fixture run on SQLite and, when ``TEST_POSTGRES_URL``
+is set (CI sets it), on PostgreSQL as well.
+
 Tests live in ``tests/`` and mirror the source directory structure:
 
 | Source Location | Test Location |
@@ -143,7 +147,8 @@ hgraph_platform_tools/
 │   ├── state_machine.py                # Lifecycle transitions (pure)
 │   ├── pre_trade.py                    # Credit and entitlement checks (pure)
 │   ├── order_book.py                   # hgraph compute_node: checks + state machine
-│   ├── event_log.py                    # Append-only SQLite log and replay
+│   ├── db.py                           # Database access: SQLite path or postgresql:// URL
+│   ├── event_log.py                    # Append-only event log and replay
 │   ├── proposals.py                    # Orders drafted by an agent, awaiting a person's decision
 │   ├── trades.py                       # Fills -> trade tickets -> booking pipeline input (pure)
 │   ├── booking.py                      # TradeBooker: books tickets, records the outcome
@@ -220,6 +225,7 @@ uv pip install -e ".[database]"       # MongoDB
 uv pip install -e ".[web]"            # HTTP requests
 uv pip install -e ".[api]"            # FastAPI service and Claude order parsing
 uv pip install -e ".[ai]"             # MCP server for AI agents
+uv pip install -e ".[postgres]"       # PostgreSQL for the order core (DATABASE_URL)
 uv pip install -e ".[oap]"            # hg_oap (installed from the sibling ../hg_oap clone)
 uv pip install -e ".[test]"           # pytest, mypy, black, coverage
 uv pip install -e ".[dev]"            # Everything

@@ -71,6 +71,10 @@ def load_secure_config() -> Dict[str, str]:
         "TRADE_OUTPUT_DIR": os.getenv("TRADE_OUTPUT_DIR", ""),
         # Kafka topic booked trades are published to; empty disables delivery
         "TRADE_KAFKA_TOPIC": os.getenv("TRADE_KAFKA_TOPIC", ""),
+        # --- Order core database ---
+        # postgresql://user:password@host:5432/dbname; empty keeps the order log, bookings and
+        # proposals in SQLite files in the API's database directory
+        "DATABASE_URL": os.getenv("DATABASE_URL", ""),
         # --- API authentication ---
         # "header" trusts the X-User-Id header (development only); "oidc" requires bearer tokens
         "AUTH_MODE": os.getenv("AUTH_MODE", "header"),

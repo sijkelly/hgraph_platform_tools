@@ -13,12 +13,12 @@ from tests.hgraph_oms.test_trades import DETAILS, TICKET
 
 
 @pytest.fixture
-def booker(tmp_path) -> TradeBooker:
-    return TradeBooker(str(tmp_path / "trade_bookings.db"), str(tmp_path / "booked"), internal_party="OURCO")
+def booker(oms_db, tmp_path) -> TradeBooker:
+    return TradeBooker(oms_db, str(tmp_path / "booked"), internal_party="OURCO")
 
 
-def _engine(tmp_path, booker=None) -> OrderEngine:
-    return OrderEngine(str(tmp_path / "order_events.db"), trade_sink=booker.book if booker else None)
+def _engine(db, booker=None) -> OrderEngine:
+    return OrderEngine(db, trade_sink=booker.book if booker else None)
 
 
 def _working_order(engine, order_id="ORD-1", details: OrderDetails = DETAILS) -> None:
@@ -71,8 +71,8 @@ def test_booking_is_idempotent_and_retries_failures(booker, tmp_path):
 # ---------- engine -> booker ----------
 
 
-def test_each_fill_is_booked_before_the_caller_is_answered(tmp_path, booker):
-    engine = _engine(tmp_path, booker)
+def test_each_fill_is_booked_before_the_caller_is_answered(oms_db, tmp_path, booker):
+    engine = _engine(oms_db, booker)
     engine.start()
     try:
         _working_order(engine)
@@ -90,33 +90,33 @@ def test_each_fill_is_booked_before_the_caller_is_answered(tmp_path, booker):
     assert sorted(p.name for p in (tmp_path / "booked").iterdir()) == ["ORD-1-F1.json", "ORD-1-F2.json"]
 
 
-def test_fills_missed_by_the_booker_are_booked_on_restart(tmp_path, booker):
+def test_fills_missed_by_the_booker_are_booked_on_restart(oms_db, booker):
     # First run has no booker attached, as if the process died between logging and booking
-    first = _engine(tmp_path)
+    first = _engine(oms_db)
     first.start()
     _working_order(first)
     first.submit(_fill())
     first.stop()
     assert booker.bookings() == []
 
-    second = _engine(tmp_path, booker)
+    second = _engine(oms_db, booker)
     second.start()
     second.stop()
     assert [(b.trade_id, b.status) for b in booker.bookings()] == [("ORD-1-F1", BOOKED)]
 
     # A further restart re-offers the fill; it is not booked twice
     updated_at = booker.get("ORD-1-F1").updated_at
-    third = _engine(tmp_path, booker)
+    third = _engine(oms_db, booker)
     third.start()
     third.stop()
     assert booker.get("ORD-1-F1").updated_at == updated_at
 
 
-def test_failing_trade_sink_does_not_stop_the_engine(tmp_path):
+def test_failing_trade_sink_does_not_stop_the_engine(oms_db):
     def broken_sink(tickets):
         raise RuntimeError("ETRM is down")
 
-    engine = OrderEngine(str(tmp_path / "order_events.db"), trade_sink=broken_sink)
+    engine = OrderEngine(oms_db, trade_sink=broken_sink)
     engine.start()
     try:
         _working_order(engine)
