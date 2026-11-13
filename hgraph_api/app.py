@@ -6,16 +6,25 @@ and CORS settings.  Call :func:`create_app` to get a ready-to-run instance.
 """
 
 import os
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from hgraph_api.config import api_config
-from hgraph_api.routers import credit, orders, parties, portfolios, entitlements, health
+from hgraph_api.routers import credit, orders, parties, portfolios, proposals, entitlements, health
 from hgraph_api.middleware.auth import AuthMiddleware
+from hgraph_api.services.order_engine import stop_order_engine
 from hgraph_api.websockets import credit_ws, orders_ws
 
 __all__ = ("create_app",)
+
+
+@asynccontextmanager
+async def _lifespan(app: FastAPI):
+    # The order engine starts on first use (see get_order_engine); stop it on shutdown
+    yield
+    stop_order_engine(app)
 
 
 def create_app() -> FastAPI:
@@ -24,6 +33,7 @@ def create_app() -> FastAPI:
         title="hgraph OMS API",
         description="REST + WebSocket API for the hgraph Order Management System",
         version="0.1.0",
+        lifespan=_lifespan,
     )
 
     # CORS — allow the UI dev server and any configured origins
@@ -52,6 +62,8 @@ def create_app() -> FastAPI:
     app.include_router(portfolios.router)
     app.include_router(entitlements.router)
     app.include_router(orders.router)
+    app.include_router(orders.trades_router)
+    app.include_router(proposals.router)
     app.include_router(credit_ws.router)
     app.include_router(orders_ws.router)
 

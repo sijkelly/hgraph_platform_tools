@@ -471,6 +471,31 @@ def _run_serve(args: argparse.Namespace) -> int:
 
 
 # ---------------------------------------------------------------------------
+# Subcommand: mcp
+# ---------------------------------------------------------------------------
+def _add_mcp_parser(subparsers: argparse._SubParsersAction) -> None:
+    p = subparsers.add_parser("mcp", help="Start the MCP server that gives an AI agent access to the OMS API")
+    p.add_argument("--api-url", type=str, default="http://localhost:8000", help="Base URL of the OMS API")
+    p.add_argument("--user-id", type=str, default="ai-agent", help="User ID the agent acts as (X-User-Id)")
+    p.set_defaults(func=_run_mcp)
+
+
+def _run_mcp(args: argparse.Namespace) -> int:
+    import httpx
+
+    from hgraph_api.mcp_server import OmsApiTools, build_server
+
+    # The MCP stdio transport owns stdout, so all logging must go to stderr
+    for handler in logging.getLogger().handlers:
+        if isinstance(handler, logging.StreamHandler) and getattr(handler, "stream", None) is sys.stdout:
+            handler.setStream(sys.stderr)
+
+    with httpx.Client(base_url=args.api_url, headers={"X-User-Id": args.user_id}, timeout=30.0) as http:
+        build_server(OmsApiTools(http)).run("stdio")
+    return 0
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 def main() -> None:
@@ -496,6 +521,7 @@ def main() -> None:
     _add_ev_rate_subscribe_parser(subparsers)
     _add_credit_subscribe_parser(subparsers)
     _add_serve_parser(subparsers)
+    _add_mcp_parser(subparsers)
 
     args = parser.parse_args()
 

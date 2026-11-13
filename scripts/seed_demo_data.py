@@ -42,7 +42,9 @@ from hgraph_static_admin.portfolio_store import (
     upsert_portfolio,
 )
 from hgraph_entitlements import get_db_connection, initialize_db, update_user_role
-from hgraph_api.services.order_store import init_order_db, create_order
+from hgraph_api.services.order_engine import ORDER_EVENTS_DB, details_from_fields, new_order_id
+from hgraph_oms.engine import OrderEngine
+from hgraph_oms.model import NewOrder
 
 
 def seed(db_dir: str) -> None:
@@ -51,7 +53,7 @@ def seed(db_dir: str) -> None:
     credit_db = os.path.join(db_dir, "credit_data.db")
     party_db = os.path.join(db_dir, "party_data.db")
     portfolio_db = os.path.join(db_dir, "portfolio_data.db")
-    order_db = os.path.join(db_dir, "order_data.db")
+    order_db = os.path.join(db_dir, ORDER_EVENTS_DB)
 
     # -----------------------------------------------------------------------
     # Parties
@@ -361,8 +363,6 @@ def seed(db_dir: str) -> None:
     # Sample orders
     # -----------------------------------------------------------------------
     print("Seeding sample orders...")
-    init_order_db(order_db)
-
     sample_orders = [
         {
             "instrument": "Henry Hub Natural Gas",
@@ -405,7 +405,7 @@ def seed(db_dir: str) -> None:
             "side": "Buy",
             "quantity": "25000",
             "unit": "MWh",
-            "price": "28.75",
+            "price": "",
             "counterparty": "MASSIVEDN",
             "delivery_period": "Cal 2027",
             "order_type": "Market",
@@ -425,8 +425,13 @@ def seed(db_dir: str) -> None:
             "book": "GAS-BOOK-1",
         },
     ]
-    for o in sample_orders:
-        create_order(order_db, o, created_by="seed")
+    engine = OrderEngine(order_db)
+    engine.start()
+    try:
+        for o in sample_orders:
+            engine.submit(NewOrder(order_id=new_order_id(), user_id="seed", details=details_from_fields(**o)))
+    finally:
+        engine.stop()
 
     print(f"\nDemo data seeded in {db_dir}/")
     print("  - 5 legal entities, 4 trading relationships")

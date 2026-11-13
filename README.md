@@ -12,6 +12,40 @@ notification pipelines for commodity and financial trade processing.
 - **Natural-language order entry** — Free text or pasted chat parsed into order fields via the Claude API
 - **UI** — Served to the [hgraph_oms_ui](https://github.com/sijkelly/hgraph_oms_ui) React front end
 
+### Order Core (`hgraph_oms`)
+- **Lifecycle state machine** — Pending → Working → Partially Filled → Filled, with reject, amend and cancel;
+  invalid transitions are refused with a reason
+- **Pre-trade checks** — Credit (including notional reserved by other open orders) and entitlements
+- **hgraph order book** — The checks and state machine run as an hgraph node, identically live or in simulation
+- **Event log and replay** — Every message and its outcome is appended to SQLite; orders are rebuilt from the
+  log on restart
+- **Real-time engine** — `OrderEngine` runs the graph on a thread so synchronous callers can submit and wait.
+  The `hgraph_api` order endpoints and the `/ws/orders` feed run on it; orders are stored in
+  `order_events.db` in the API's `--db-dir`.
+- **Fills become trades** — Each fill is a trade ticket that is mapped by the booking pipeline and written to
+  `booked_trades/` (override with `TRADE_OUTPUT_DIR`). The outcome is recorded per trade, a failure keeps its
+  reason, and any fill not yet booked is booked on restart. `GET /api/v1/trades` and
+  `GET /api/v1/orders/{id}/trades` show the status. Instrument names are resolved through demo product
+  reference data in `hgraph_oms/trades.py`.
+- **Delivery to the ETRM over Kafka** — Set `TRADE_KAFKA_TOPIC` (brokers from `KAFKA_BOOTSTRAP_SERVERS`) and
+  each booked trade is published to that topic, keyed by trade ID, from a background thread. A trade stays
+  `Pending` and is retried until the broker acknowledges it, including across restarts. Delivery is
+  at-least-once, so consumers should ignore a trade ID they have already processed.
+  `GET /api/v1/trades?undelivered=true` lists what is still waiting.
+
+### AI Layer
+- **Order parsing** — `POST /api/v1/orders/parse-nlp` turns free text or a pasted client message into order
+  fields with a confidence each, using the Claude API with a schema-enforced reply. The result carries
+  `warnings` for anything that would stop the order submitting or its trades booking. The model defaults to
+  `claude-opus-5-5`; set `ORDER_PARSER_MODEL` to change it.
+- **Proposals, confirmed by a person** — An agent drafts an order with `POST /api/v1/proposals`, which changes
+  nothing in the order book. A person confirms it (`POST /api/v1/proposals/{id}/confirm`), which submits the
+  order under their name through the normal credit check, or dismisses it. The author of a proposal cannot
+  confirm it.
+- **MCP server** — `hgraph-tools mcp --api-url http://localhost:8000 --user-id ai-agent` gives an AI agent
+  tools to read orders, trades, counterparties, credit and products and to draft proposals. There is no tool
+  that submits, amends, fills or cancels an order.
+
 ### hg_oap Adapters (`hgraph_oap_adapter`)
 - **Domain adapters** — Convert `hg_oap` swaps, parties, order lifecycle events and regulatory
   reports into booking-pipeline and data-lake records
@@ -112,6 +146,7 @@ hgraph_platform_tools/
 │   └── fpml_xsd_reference_files/       # XSD parser and reference data
 │
 ├── hgraph_api/                         # FastAPI OMS service (REST + WebSocket)
+├── hgraph_oms/                         # Order core: state machine, pre-trade checks, hgraph order book, engine
 ├── hgraph_oap_adapter/                 # Adapters between hg_oap domain objects and the pipeline
 ├── hgraph_entitlements/                # Role-based access control
 ├── hgraph_notification/                # Email notifications (Jinja2 + SMTP)

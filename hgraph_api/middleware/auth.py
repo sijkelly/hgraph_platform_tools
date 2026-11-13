@@ -30,6 +30,8 @@ _PUBLIC_PREFIXES = (
 _ACTION_MAP = {
     ("POST", "/api/v1/orders"): "execute_trade",
     ("PATCH", "/api/v1/orders"): "execute_trade",
+    # Confirming or dismissing a proposal is a trading decision; drafting one is not
+    ("POST", "/api/v1/proposals/"): "execute_trade",
     ("POST", "/api/v1/credit"): "manage_credit",
     ("PUT", "/api/v1/credit"): "manage_credit",
     ("DELETE", "/api/v1/credit"): "manage_credit",

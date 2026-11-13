@@ -66,6 +66,11 @@ def load_secure_config() -> Dict[str, str]:
         "MESSAGE_SENDER_ID": os.getenv("MESSAGE_SENDER_ID", "hgraph_platform"),
         "MESSAGE_TARGET_ID": os.getenv("MESSAGE_TARGET_ID", "booking_system"),
         "MESSAGE_VERSION": os.getenv("MESSAGE_VERSION", "1.0"),
+        # --- Trades booked from order fills ---
+        "INTERNAL_PARTY_ID": os.getenv("INTERNAL_PARTY_ID", "INTERNAL"),
+        "TRADE_OUTPUT_DIR": os.getenv("TRADE_OUTPUT_DIR", ""),
+        # Kafka topic booked trades are published to; empty disables delivery
+        "TRADE_KAFKA_TOPIC": os.getenv("TRADE_KAFKA_TOPIC", ""),
         # --- Notification templates ---
         "NOTIFICATION_TEMPLATE_DIR": os.getenv("NOTIFICATION_TEMPLATE_DIR", "hgraph_notification/templates"),
     }

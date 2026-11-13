@@ -24,7 +24,11 @@ The project consumes hgraph as a dependency and follows its coding conventions.
 5. Code is formatted with **Black** (line-length 120, target Python 3.12).
 6. Modules import each other by full package path (``from hgraph_trade.hgraph_trade_booker.x import y``),
    never as bare sibling imports.
-7. **Black, mypy and pytest must all pass** — CI (``.github/workflows/ci.yml``) runs them on every pull request.
+7. Keep business rules in **pure functions** and hgraph nodes thin. Modules whose signatures use time-series
+   types (``TS[...]``, ``TSD[...]``) need a mypy override in ``pyproject.toml``; keep plain Python out of them.
+8. **An AI agent never changes an order.** Agents read and draft proposals (``hgraph_api/mcp_server.py``);
+   a person confirms. Do not add agent tools that submit, amend, fill or cancel.
+9. **Black, mypy and pytest must all pass** — CI (``.github/workflows/ci.yml``) runs them on every pull request.
 
 ---
 
@@ -60,6 +64,7 @@ Tests live in ``tests/`` and mirror the source directory structure:
 | ``hgraph_trade/hgraph_trade_mapping/`` | ``tests/hgraph_trade/hgraph_trade_mapping/`` |
 | ``hgraph_entitlements/`` | ``tests/hgraph_entitlements/`` |
 | ``hgraph_api/`` | ``tests/hgraph_api/`` |
+| ``hgraph_oms/`` | ``tests/hgraph_oms/`` |
 | ``hgraph_oap_adapter/`` | ``tests/hgraph_oap_adapter/`` |
 | ``hgraph_static_admin/`` | ``tests/hgraph_static_admin/`` |
 
@@ -125,10 +130,23 @@ hgraph_platform_tools/
 │
 ├── hgraph_api/                         # FastAPI OMS service
 │   ├── app.py                          # Application factory
-│   ├── routers/                        # orders, credit, parties, portfolios, entitlements, health
-│   ├── services/                       # Order store, Claude order parser
+│   ├── routers/                        # orders, proposals, credit, parties, portfolios, entitlements, health
+│   ├── services/                       # Order engine access, Claude order parser
 │   ├── websockets/                     # Live order and credit feeds
+│   ├── mcp_server.py                   # MCP tools for AI agents (read + propose only)
 │   └── middleware/auth.py              # X-User-Id + entitlements check
+├── hgraph_oms/                         # Order core (hgraph_api's order endpoints run on it)
+│   ├── model.py                        # Immutable messages, snapshots, responses
+│   ├── state_machine.py                # Lifecycle transitions (pure)
+│   ├── pre_trade.py                    # Credit and entitlement checks (pure)
+│   ├── order_book.py                   # hgraph compute_node: checks + state machine
+│   ├── event_log.py                    # Append-only SQLite log and replay
+│   ├── proposals.py                    # Orders drafted by an agent, awaiting a person's decision
+│   ├── trades.py                       # Fills -> trade tickets -> booking pipeline input (pure)
+│   ├── booking.py                      # TradeBooker: books tickets, records the outcome
+│   ├── delivery.py                     # TradePublisher: sends booked trades to Kafka, with retry
+│   ├── engine_graph.py                 # hgraph wiring for the real-time engine
+│   └── engine.py                       # OrderEngine: runs the graph on a thread
 ├── hgraph_oap_adapter/                 # hg_oap domain objects <-> pipeline dicts and stores
 ├── hgraph_entitlements/                # Role-based access control
 ├── hgraph_notification/                # Email notifications
@@ -183,6 +201,9 @@ hgraph-tools parse-xsd --xsd path/to/fpml.xsd --output output.json
 
 # OMS API for the hgraph_oms_ui front end
 hgraph-tools serve --port 8000 --db-dir ./data/
+
+# MCP server giving an AI agent read access and the ability to draft order proposals
+hgraph-tools mcp --api-url http://localhost:8000 --user-id ai-agent
 ```
 
 ## Dependencies
@@ -195,6 +216,7 @@ uv pip install -e ".[notification]"   # Jinja2 email templates
 uv pip install -e ".[database]"       # MongoDB
 uv pip install -e ".[web]"            # HTTP requests
 uv pip install -e ".[api]"            # FastAPI service and Claude order parsing
+uv pip install -e ".[ai]"             # MCP server for AI agents
 uv pip install -e ".[oap]"            # hg_oap (installed from the sibling ../hg_oap clone)
 uv pip install -e ".[test]"           # pytest, mypy, black, coverage
 uv pip install -e ".[dev]"            # Everything
