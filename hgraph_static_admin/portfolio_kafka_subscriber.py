@@ -113,17 +113,13 @@ def parse_portfolio_message(msg: Dict[str, Any]) -> Tuple[str, PortfolioInfo | N
     portfolio_type = _PORTFOLIO_TYPE_MAP.get(portfolio_type_str)
     if portfolio_type is None:
         raise ValueError(
-            f"Unknown portfolio_type: {portfolio_type_str!r}. "
-            f"Expected one of: {list(_PORTFOLIO_TYPE_MAP.keys())}"
+            f"Unknown portfolio_type: {portfolio_type_str!r}. " f"Expected one of: {list(_PORTFOLIO_TYPE_MAP.keys())}"
         )
 
     status_str = msg.get("status", "Active")
     status = _STATUS_MAP.get(status_str)
     if status is None:
-        raise ValueError(
-            f"Unknown status: {status_str!r}. "
-            f"Expected one of: {list(_STATUS_MAP.keys())}"
-        )
+        raise ValueError(f"Unknown status: {status_str!r}. " f"Expected one of: {list(_STATUS_MAP.keys())}")
 
     portfolio = PortfolioInfo(
         symbol=symbol,
@@ -164,18 +160,12 @@ def parse_book_message(msg: Dict[str, Any]) -> Tuple[str, BookInfo | None]:
     book_type_str = msg.get("book_type", "")
     book_type = _BOOK_TYPE_MAP.get(book_type_str)
     if book_type is None:
-        raise ValueError(
-            f"Unknown book_type: {book_type_str!r}. "
-            f"Expected one of: {list(_BOOK_TYPE_MAP.keys())}"
-        )
+        raise ValueError(f"Unknown book_type: {book_type_str!r}. " f"Expected one of: {list(_BOOK_TYPE_MAP.keys())}")
 
     status_str = msg.get("status", "Active")
     status = _STATUS_MAP.get(status_str)
     if status is None:
-        raise ValueError(
-            f"Unknown status: {status_str!r}. "
-            f"Expected one of: {list(_STATUS_MAP.keys())}"
-        )
+        raise ValueError(f"Unknown status: {status_str!r}. " f"Expected one of: {list(_STATUS_MAP.keys())}")
 
     book = BookInfo(
         symbol=symbol,
@@ -219,14 +209,10 @@ class PortfolioKafkaSubscriber:
         self.db_path = db_path
         self.bootstrap_servers = bootstrap_servers or config["KAFKA_BOOTSTRAP_SERVERS"]
         self.group_id = group_id or config.get("KAFKA_CONSUMER_GROUP", "hgraph_platform")
-        self.portfolio_topic = portfolio_topic or config.get(
-            "PORTFOLIO_KAFKA_PORTFOLIO_TOPIC", "portfolio.portfolio"
-        )
-        self.book_topic = book_topic or config.get(
-            "PORTFOLIO_KAFKA_BOOK_TOPIC", "portfolio.book"
-        )
+        self.portfolio_topic = portfolio_topic or config.get("PORTFOLIO_KAFKA_PORTFOLIO_TOPIC", "portfolio.portfolio")
+        self.book_topic = book_topic or config.get("PORTFOLIO_KAFKA_BOOK_TOPIC", "portfolio.book")
         self._running = False
-        self._receiver = None
+        self._receiver: Any = None  # KafkaReceiver, imported lazily in start()
         self._processed_count = 0
 
     def start(self, *, poll_interval_ms: int = 1000, max_messages: int | None = None) -> None:

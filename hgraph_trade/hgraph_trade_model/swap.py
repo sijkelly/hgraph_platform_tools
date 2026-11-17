@@ -26,7 +26,7 @@ from hgraph_trade.hgraph_trade_mapping.instrument_mappings import map_pricing_in
 __all__ = ("create_commodity_swap",)
 
 
-def create_commodity_swap(trade_data: Dict[str, Any], sub_instrument_type: str) -> list:
+def create_commodity_swap(trade_data: Dict[str, Any], sub_instrument_type: str | None) -> list:
     global_mapping = get_global_mapping()
     swap_mapping = get_instrument_mapping("swap")
     combined_mapping = {**global_mapping, **swap_mapping}

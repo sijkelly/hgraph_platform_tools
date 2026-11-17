@@ -25,6 +25,8 @@ from hg_oap.portfolio.portfolio_info import (
     PortfolioType,
 )
 
+from hgraph_oms.db import connect, get_database
+
 __all__ = (
     "init_portfolio_db",
     "upsert_portfolio",
@@ -93,9 +95,12 @@ def _now_iso() -> str:
 def init_portfolio_db(db_path: str) -> None:
     """Create the ``portfolios`` and ``books`` tables.
 
-    :param db_path: Path to the SQLite database file.
+    :param db_path: SQLite file path or PostgreSQL URL.
     """
-    conn = sqlite3.connect(db_path)
+    database = get_database(db_path)
+    if not database.needs_init("portfolio"):
+        return
+    conn = connect(db_path)
     try:
         conn.execute("PRAGMA journal_mode = WAL")
         conn.execute("PRAGMA foreign_keys = ON")
@@ -104,7 +109,7 @@ def init_portfolio_db(db_path: str) -> None:
         conn.commit()
     finally:
         conn.close()
-    logger.info("Portfolio database initialised at %s", db_path)
+    logger.info("Portfolio database initialised at %s", database.description)
 
 
 # ---------------------------------------------------------------------------
@@ -115,10 +120,10 @@ def init_portfolio_db(db_path: str) -> None:
 def upsert_portfolio(db_path: str, portfolio: PortfolioInfo) -> None:
     """Insert or update a portfolio record.
 
-    :param db_path: Path to the SQLite database file.
+    :param db_path: SQLite file path or PostgreSQL URL.
     :param portfolio: The portfolio info to store.
     """
-    conn = sqlite3.connect(db_path)
+    conn = connect(db_path)
     try:
         conn.execute(
             """
@@ -156,16 +161,14 @@ def upsert_portfolio(db_path: str, portfolio: PortfolioInfo) -> None:
 def get_portfolio(db_path: str, symbol: str) -> PortfolioInfo | None:
     """Retrieve a portfolio by symbol.
 
-    :param db_path: Path to the SQLite database file.
+    :param db_path: SQLite file path or PostgreSQL URL.
     :param symbol: The portfolio's short identifier.
     :returns: The :class:`PortfolioInfo`, or ``None`` if not found.
     """
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
+    conn = connect(db_path)
+    conn.row_factory = sqlite3.Row  # rows by column name (PostgreSQL rows always are)
     try:
-        row = conn.execute(
-            "SELECT * FROM portfolios WHERE symbol = ?", (symbol,)
-        ).fetchone()
+        row = conn.execute("SELECT * FROM portfolios WHERE symbol = ?", (symbol,)).fetchone()
     finally:
         conn.close()
 
@@ -187,15 +190,13 @@ def get_portfolio(db_path: str, symbol: str) -> PortfolioInfo | None:
 def get_all_portfolios(db_path: str) -> List[PortfolioInfo]:
     """Return all portfolios.
 
-    :param db_path: Path to the SQLite database file.
+    :param db_path: SQLite file path or PostgreSQL URL.
     :returns: List of :class:`PortfolioInfo` instances.
     """
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
+    conn = connect(db_path)
+    conn.row_factory = sqlite3.Row  # rows by column name (PostgreSQL rows always are)
     try:
-        rows = conn.execute(
-            "SELECT * FROM portfolios ORDER BY symbol"
-        ).fetchall()
+        rows = conn.execute("SELECT * FROM portfolios ORDER BY symbol").fetchall()
     finally:
         conn.close()
 
@@ -217,15 +218,13 @@ def get_all_portfolios(db_path: str) -> List[PortfolioInfo]:
 def delete_portfolio(db_path: str, symbol: str) -> bool:
     """Delete a portfolio by symbol.
 
-    :param db_path: Path to the SQLite database file.
+    :param db_path: SQLite file path or PostgreSQL URL.
     :param symbol: The portfolio's short identifier.
     :returns: ``True`` if a row was deleted, ``False`` if not found.
     """
-    conn = sqlite3.connect(db_path)
+    conn = connect(db_path)
     try:
-        cursor = conn.execute(
-            "DELETE FROM portfolios WHERE symbol = ?", (symbol,)
-        )
+        cursor = conn.execute("DELETE FROM portfolios WHERE symbol = ?", (symbol,))
         conn.commit()
         return cursor.rowcount > 0
     finally:
@@ -240,10 +239,10 @@ def delete_portfolio(db_path: str, symbol: str) -> bool:
 def upsert_book(db_path: str, book: BookInfo) -> None:
     """Insert or update a book record.
 
-    :param db_path: Path to the SQLite database file.
+    :param db_path: SQLite file path or PostgreSQL URL.
     :param book: The book info to store.
     """
-    conn = sqlite3.connect(db_path)
+    conn = connect(db_path)
     try:
         conn.execute(
             """
@@ -281,16 +280,14 @@ def upsert_book(db_path: str, book: BookInfo) -> None:
 def get_book(db_path: str, symbol: str) -> BookInfo | None:
     """Retrieve a book by symbol.
 
-    :param db_path: Path to the SQLite database file.
+    :param db_path: SQLite file path or PostgreSQL URL.
     :param symbol: The book's short identifier.
     :returns: The :class:`BookInfo`, or ``None`` if not found.
     """
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
+    conn = connect(db_path)
+    conn.row_factory = sqlite3.Row  # rows by column name (PostgreSQL rows always are)
     try:
-        row = conn.execute(
-            "SELECT * FROM books WHERE symbol = ?", (symbol,)
-        ).fetchone()
+        row = conn.execute("SELECT * FROM books WHERE symbol = ?", (symbol,)).fetchone()
     finally:
         conn.close()
 
@@ -312,15 +309,13 @@ def get_book(db_path: str, symbol: str) -> BookInfo | None:
 def get_all_books(db_path: str) -> List[BookInfo]:
     """Return all books.
 
-    :param db_path: Path to the SQLite database file.
+    :param db_path: SQLite file path or PostgreSQL URL.
     :returns: List of :class:`BookInfo` instances.
     """
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
+    conn = connect(db_path)
+    conn.row_factory = sqlite3.Row  # rows by column name (PostgreSQL rows always are)
     try:
-        rows = conn.execute(
-            "SELECT * FROM books ORDER BY symbol"
-        ).fetchall()
+        rows = conn.execute("SELECT * FROM books ORDER BY symbol").fetchall()
     finally:
         conn.close()
 
@@ -342,15 +337,13 @@ def get_all_books(db_path: str) -> List[BookInfo]:
 def delete_book(db_path: str, symbol: str) -> bool:
     """Delete a book by symbol.
 
-    :param db_path: Path to the SQLite database file.
+    :param db_path: SQLite file path or PostgreSQL URL.
     :param symbol: The book's short identifier.
     :returns: ``True`` if a row was deleted, ``False`` if not found.
     """
-    conn = sqlite3.connect(db_path)
+    conn = connect(db_path)
     try:
-        cursor = conn.execute(
-            "DELETE FROM books WHERE symbol = ?", (symbol,)
-        )
+        cursor = conn.execute("DELETE FROM books WHERE symbol = ?", (symbol,))
         conn.commit()
         return cursor.rowcount > 0
     finally:

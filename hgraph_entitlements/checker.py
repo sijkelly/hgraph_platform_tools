@@ -19,8 +19,7 @@ Usage:
 """
 
 import logging
-import sqlite3
-from typing import Optional, Set
+from typing import Any, Optional, Set
 
 from hgraph_entitlements.example_code import (
     STATIC_ROLES,
@@ -76,7 +75,7 @@ def get_allowed_actions(role: str) -> Set[str]:
 def check_permission(
     user_id: str,
     action: str,
-    conn: Optional[sqlite3.Connection] = None,
+    conn: Optional[Any] = None,
 ) -> bool:
     """
     Check whether a user is allowed to perform an action.
@@ -119,7 +118,7 @@ def check_permission(
 def require_permission(
     user_id: str,
     action: str,
-    conn: Optional[sqlite3.Connection] = None,
+    conn: Optional[Any] = None,
 ) -> None:
     """
     Assert that a user has the required permission, or raise PermissionDeniedError.

@@ -16,6 +16,8 @@ from hgraph_static_admin.credit_store import (
     init_credit_db,
 )
 
+from hgraph_api.services.order_engine import order_db_target
+
 __all__ = ("router",)
 
 router = APIRouter(prefix="/api/v1/credit", tags=["credit"])
@@ -23,7 +25,7 @@ router = APIRouter(prefix="/api/v1/credit", tags=["credit"])
 
 def _db_path(request: Request) -> str:
     db_dir = getattr(request.app.state, "db_dir", ".")
-    db = os.path.join(db_dir, api_config.get("CREDIT_DB_PATH", "credit_data.db"))
+    db = order_db_target(request.app, db_dir, api_config.get("CREDIT_DB_PATH", "credit_data.db"))
     init_credit_db(db)
     return db
 

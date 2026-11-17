@@ -50,6 +50,20 @@ def book_trade(
         raise IOError(f"Error writing to {output_path}: {exc}") from exc
 
 
+def _trade_id_of(message: Dict[str, Any]) -> Optional[str]:
+    """Return the trade ID from a trade message, or None if it has none.
+
+    ``create_trade_header`` nests its payload under a second ``tradeHeader`` key
+    (alongside ``metadata``), so both the nested and the flat shape are accepted.
+    """
+    header = message.get("tradeHeader", {})
+    for candidate in (header.get("tradeHeader", {}), header):
+        trade_id = candidate.get("partyTradeIdentifier", {}).get("tradeId")
+        if trade_id:
+            return str(trade_id)
+    return None
+
+
 def book_trades_batch(
     messages: List[Dict[str, Any]],
     output_dir: str,
@@ -73,10 +87,17 @@ def book_trades_batch(
     booked: List[str] = []
     quarantined: List[str] = []
 
+    used_names: set[str] = set()
+
     for idx, message in enumerate(messages):
-        # Try to extract a meaningful trade ID for the filename
-        trade_id = message.get("tradeHeader", {}).get("partyTradeIdentifier", {}).get("tradeId", f"trade_{idx}")
-        filename = f"{trade_id}.json"
+        trade_id = _trade_id_of(message) or f"trade_{idx}"
+        # Decomposed trades share a trade ID; suffix later ones so they do not overwrite each other
+        name, n = trade_id, 1
+        while name in used_names:
+            n += 1
+            name = f"{trade_id}_{n}"
+        used_names.add(name)
+        filename = f"{name}.json"
 
         try:
             book_trade(message, filename, output_dir)

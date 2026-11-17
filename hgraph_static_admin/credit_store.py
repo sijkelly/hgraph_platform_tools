@@ -25,6 +25,8 @@ from hg_oap.credit.credit_limit import (
     CreditUtilization,
 )
 
+from hgraph_oms.db import connect, get_database
+
 __all__ = (
     "init_credit_db",
     "upsert_credit_limit",
@@ -49,7 +51,7 @@ _CREATE_CREDIT_LIMITS_SQL = """
 CREATE TABLE IF NOT EXISTS credit_limits (
     counterparty_symbol TEXT NOT NULL,
     limit_type TEXT NOT NULL,
-    limit_amount REAL NOT NULL,
+    limit_amount DOUBLE PRECISION NOT NULL,
     limit_currency TEXT NOT NULL DEFAULT 'USD',
     effective_date TEXT,
     expiry_date TEXT,
@@ -64,11 +66,11 @@ CREATE TABLE IF NOT EXISTS credit_limits (
 _CREATE_CREDIT_UTILIZATIONS_SQL = """
 CREATE TABLE IF NOT EXISTS credit_utilizations (
     counterparty_symbol TEXT PRIMARY KEY,
-    utilized_amount REAL NOT NULL,
+    utilized_amount DOUBLE PRECISION NOT NULL,
     utilization_currency TEXT NOT NULL DEFAULT 'USD',
-    limit_amount REAL NOT NULL DEFAULT 0.0,
-    available_amount REAL NOT NULL DEFAULT 0.0,
-    utilization_percentage REAL NOT NULL DEFAULT 0.0,
+    limit_amount DOUBLE PRECISION NOT NULL DEFAULT 0.0,
+    available_amount DOUBLE PRECISION NOT NULL DEFAULT 0.0,
+    utilization_percentage DOUBLE PRECISION NOT NULL DEFAULT 0.0,
     as_of_timestamp TEXT,
     updated_at TEXT NOT NULL
 )
@@ -100,9 +102,12 @@ def _parse_date(value: str | None) -> date | None:
 def init_credit_db(db_path: str) -> None:
     """Create the ``credit_limits`` and ``credit_utilizations`` tables.
 
-    :param db_path: Path to the SQLite database file.
+    :param db_path: SQLite file path or PostgreSQL URL.
     """
-    conn = sqlite3.connect(db_path)
+    database = get_database(db_path)
+    if not database.needs_init("credit"):
+        return
+    conn = connect(db_path)
     try:
         conn.execute("PRAGMA journal_mode = WAL")
         conn.execute("PRAGMA foreign_keys = ON")
@@ -111,7 +116,7 @@ def init_credit_db(db_path: str) -> None:
         conn.commit()
     finally:
         conn.close()
-    logger.info("Credit database initialised at %s", db_path)
+    logger.info("Credit database initialised at %s", database.description)
 
 
 # ---------------------------------------------------------------------------
@@ -122,10 +127,10 @@ def init_credit_db(db_path: str) -> None:
 def upsert_credit_limit(db_path: str, limit: CreditLimit) -> None:
     """Insert or update a credit limit record.
 
-    :param db_path: Path to the SQLite database file.
+    :param db_path: SQLite file path or PostgreSQL URL.
     :param limit: The credit limit to store.
     """
-    conn = sqlite3.connect(db_path)
+    conn = connect(db_path)
     try:
         conn.execute(
             """
@@ -164,13 +169,13 @@ def upsert_credit_limit(db_path: str, limit: CreditLimit) -> None:
 def get_credit_limit(db_path: str, counterparty_symbol: str, limit_type: str) -> CreditLimit | None:
     """Retrieve a credit limit by counterparty and type.
 
-    :param db_path: Path to the SQLite database file.
+    :param db_path: SQLite file path or PostgreSQL URL.
     :param counterparty_symbol: The counterparty's short identifier.
     :param limit_type: The limit type value (e.g. ``"Bilateral"``).
     :returns: The :class:`CreditLimit`, or ``None`` if not found.
     """
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
+    conn = connect(db_path)
+    conn.row_factory = sqlite3.Row  # rows by column name (PostgreSQL rows always are)
     try:
         row = conn.execute(
             "SELECT * FROM credit_limits WHERE counterparty_symbol = ? AND limit_type = ?",
@@ -202,12 +207,12 @@ def get_credit_limits_for_counterparty(db_path: str, counterparty_symbol: str) -
     every limit type (Bilateral, Cleared, etc.) for the selected
     counterparty.
 
-    :param db_path: Path to the SQLite database file.
+    :param db_path: SQLite file path or PostgreSQL URL.
     :param counterparty_symbol: The counterparty's short identifier.
     :returns: List of :class:`CreditLimit` instances.
     """
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
+    conn = connect(db_path)
+    conn.row_factory = sqlite3.Row  # rows by column name (PostgreSQL rows always are)
     try:
         rows = conn.execute(
             "SELECT * FROM credit_limits WHERE counterparty_symbol = ? ORDER BY limit_type",
@@ -235,15 +240,13 @@ def get_credit_limits_for_counterparty(db_path: str, counterparty_symbol: str) -
 def get_all_credit_limits(db_path: str) -> List[CreditLimit]:
     """Return all credit limits.
 
-    :param db_path: Path to the SQLite database file.
+    :param db_path: SQLite file path or PostgreSQL URL.
     :returns: List of :class:`CreditLimit` instances.
     """
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
+    conn = connect(db_path)
+    conn.row_factory = sqlite3.Row  # rows by column name (PostgreSQL rows always are)
     try:
-        rows = conn.execute(
-            "SELECT * FROM credit_limits ORDER BY counterparty_symbol, limit_type"
-        ).fetchall()
+        rows = conn.execute("SELECT * FROM credit_limits ORDER BY counterparty_symbol, limit_type").fetchall()
     finally:
         conn.close()
 
@@ -266,12 +269,12 @@ def get_all_credit_limits(db_path: str) -> List[CreditLimit]:
 def delete_credit_limit(db_path: str, counterparty_symbol: str, limit_type: str) -> bool:
     """Delete a credit limit by counterparty and type.
 
-    :param db_path: Path to the SQLite database file.
+    :param db_path: SQLite file path or PostgreSQL URL.
     :param counterparty_symbol: The counterparty's short identifier.
     :param limit_type: The limit type value (e.g. ``"Bilateral"``).
     :returns: ``True`` if a row was deleted, ``False`` if not found.
     """
-    conn = sqlite3.connect(db_path)
+    conn = connect(db_path)
     try:
         cursor = conn.execute(
             "DELETE FROM credit_limits WHERE counterparty_symbol = ? AND limit_type = ?",
@@ -293,10 +296,10 @@ def upsert_credit_utilization(db_path: str, utilization: CreditUtilization) -> N
 
     Only the latest snapshot per counterparty is stored.
 
-    :param db_path: Path to the SQLite database file.
+    :param db_path: SQLite file path or PostgreSQL URL.
     :param utilization: The utilization snapshot to store.
     """
-    conn = sqlite3.connect(db_path)
+    conn = connect(db_path)
     try:
         conn.execute(
             """
@@ -333,12 +336,12 @@ def upsert_credit_utilization(db_path: str, utilization: CreditUtilization) -> N
 def get_credit_utilization(db_path: str, counterparty_symbol: str) -> CreditUtilization | None:
     """Retrieve the latest utilization snapshot for a counterparty.
 
-    :param db_path: Path to the SQLite database file.
+    :param db_path: SQLite file path or PostgreSQL URL.
     :param counterparty_symbol: The counterparty's short identifier.
     :returns: The :class:`CreditUtilization`, or ``None`` if not found.
     """
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
+    conn = connect(db_path)
+    conn.row_factory = sqlite3.Row  # rows by column name (PostgreSQL rows always are)
     try:
         row = conn.execute(
             "SELECT * FROM credit_utilizations WHERE counterparty_symbol = ?",
@@ -364,15 +367,13 @@ def get_credit_utilization(db_path: str, counterparty_symbol: str) -> CreditUtil
 def get_all_credit_utilizations(db_path: str) -> List[CreditUtilization]:
     """Return all credit utilization snapshots.
 
-    :param db_path: Path to the SQLite database file.
+    :param db_path: SQLite file path or PostgreSQL URL.
     :returns: List of :class:`CreditUtilization` instances.
     """
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
+    conn = connect(db_path)
+    conn.row_factory = sqlite3.Row  # rows by column name (PostgreSQL rows always are)
     try:
-        rows = conn.execute(
-            "SELECT * FROM credit_utilizations ORDER BY counterparty_symbol"
-        ).fetchall()
+        rows = conn.execute("SELECT * FROM credit_utilizations ORDER BY counterparty_symbol").fetchall()
     finally:
         conn.close()
 
@@ -393,11 +394,11 @@ def get_all_credit_utilizations(db_path: str) -> List[CreditUtilization]:
 def delete_credit_utilization(db_path: str, counterparty_symbol: str) -> bool:
     """Delete a credit utilization snapshot.
 
-    :param db_path: Path to the SQLite database file.
+    :param db_path: SQLite file path or PostgreSQL URL.
     :param counterparty_symbol: The counterparty's short identifier.
     :returns: ``True`` if a row was deleted, ``False`` if not found.
     """
-    conn = sqlite3.connect(db_path)
+    conn = connect(db_path)
     try:
         cursor = conn.execute(
             "DELETE FROM credit_utilizations WHERE counterparty_symbol = ?",

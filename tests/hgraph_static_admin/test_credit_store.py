@@ -25,17 +25,15 @@ from hgraph_static_admin.credit_store import (
     upsert_credit_utilization,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
 
 
 @pytest.fixture()
-def db_path(tmp_path):
-    path = str(tmp_path / "test_credit.db")
-    init_credit_db(path)
-    return path
+def db_path(oms_db):
+    init_credit_db(oms_db)
+    return oms_db
 
 
 @pytest.fixture()

@@ -18,7 +18,6 @@ from hgraph_static_admin.party_store import (
     upsert_legal_entity,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -171,9 +170,7 @@ def test_parse_entity_unknown_action():
 
 def test_parse_entity_unknown_classification():
     with pytest.raises(ValueError, match="Unknown classification"):
-        parse_legal_entity_message(
-            {"action": "UPSERT", "symbol": "X", "name": "X", "classification": "INVALID"}
-        )
+        parse_legal_entity_message({"action": "UPSERT", "symbol": "X", "name": "X", "classification": "INVALID"})
 
 
 def test_parse_entity_case_insensitive_action():
@@ -289,11 +286,14 @@ def test_process_entity_upsert(db_path, subscriber, entity_upsert_msg):
 
 def test_process_entity_delete(db_path, subscriber, dealer, entity_delete_msg):
     # First create then delete
-    upsert_legal_entity(db_path, LegalEntity(
-        symbol="ACME",
-        name="ACME",
-        classification=PartyClassification.NON_FINANCIAL_END_USER,
-    ))
+    upsert_legal_entity(
+        db_path,
+        LegalEntity(
+            symbol="ACME",
+            name="ACME",
+            classification=PartyClassification.NON_FINANCIAL_END_USER,
+        ),
+    )
     subscriber.process_message("party.legal_entity", entity_delete_msg)
     assert get_legal_entity(db_path, "ACME") is None
 

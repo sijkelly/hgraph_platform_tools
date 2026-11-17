@@ -24,7 +24,6 @@ from hgraph_oap_adapter.energy_swap_adapter import (
     fixed_float_swap_to_trade_data,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -140,14 +139,20 @@ def basis_swap_fixture(usd, hh_index, algonquin_index):
 
 def test_fixed_float_returns_dict(fixed_float_swap, relationship):
     result = fixed_float_swap_to_trade_data(
-        fixed_float_swap, relationship, "SWAP-001", date(2026, 1, 5),
+        fixed_float_swap,
+        relationship,
+        "SWAP-001",
+        date(2026, 1, 5),
     )
     assert isinstance(result, dict)
 
 
 def test_fixed_float_base_fields(fixed_float_swap, relationship):
     result = fixed_float_swap_to_trade_data(
-        fixed_float_swap, relationship, "SWAP-001", date(2026, 1, 5),
+        fixed_float_swap,
+        relationship,
+        "SWAP-001",
+        date(2026, 1, 5),
     )
     assert result["trade_id"] == "SWAP-001"
     assert result["trade_date"] == "2026-01-05"
@@ -158,7 +163,10 @@ def test_fixed_float_base_fields(fixed_float_swap, relationship):
 
 def test_fixed_float_party_fields(fixed_float_swap, relationship):
     result = fixed_float_swap_to_trade_data(
-        fixed_float_swap, relationship, "SWAP-001", date(2026, 1, 5),
+        fixed_float_swap,
+        relationship,
+        "SWAP-001",
+        date(2026, 1, 5),
     )
     assert result["internal_party"] == "DEALER"
     assert result["external_party"] == "UTIL_CO"
@@ -168,7 +176,10 @@ def test_fixed_float_party_fields(fixed_float_swap, relationship):
 
 def test_fixed_float_dates(fixed_float_swap, relationship):
     result = fixed_float_swap_to_trade_data(
-        fixed_float_swap, relationship, "SWAP-001", date(2026, 1, 5),
+        fixed_float_swap,
+        relationship,
+        "SWAP-001",
+        date(2026, 1, 5),
     )
     assert result["effective_date"] == "2026-01-01"
     assert result["termination_date"] == "2026-12-31"
@@ -176,7 +187,10 @@ def test_fixed_float_dates(fixed_float_swap, relationship):
 
 def test_fixed_float_fixed_leg(fixed_float_swap, relationship):
     result = fixed_float_swap_to_trade_data(
-        fixed_float_swap, relationship, "SWAP-001", date(2026, 1, 5),
+        fixed_float_swap,
+        relationship,
+        "SWAP-001",
+        date(2026, 1, 5),
     )
     assert result["fixedLeg.price"] == 3.50
     assert result["fixedLeg.quantity"] == 10000.0
@@ -185,7 +199,10 @@ def test_fixed_float_fixed_leg(fixed_float_swap, relationship):
 
 def test_fixed_float_floating_leg(fixed_float_swap, relationship):
     result = fixed_float_swap_to_trade_data(
-        fixed_float_swap, relationship, "SWAP-001", date(2026, 1, 5),
+        fixed_float_swap,
+        relationship,
+        "SWAP-001",
+        date(2026, 1, 5),
     )
     assert result["floatingLeg.instrumentId"] == "NATURAL_GAS-HENRY_HUB"
     assert result["floatingLeg.specifiedPrice"] == "Settlement"
@@ -196,7 +213,10 @@ def test_fixed_float_floating_leg(fixed_float_swap, relationship):
 def test_fixed_float_buy_direction(fixed_float_swap, relationship):
     """Buy = we pay fixed, counterparty pays floating."""
     result = fixed_float_swap_to_trade_data(
-        fixed_float_swap, relationship, "SWAP-001", date(2026, 1, 5),
+        fixed_float_swap,
+        relationship,
+        "SWAP-001",
+        date(2026, 1, 5),
         buy_sell="Buy",
     )
     assert result["fixedLeg.payerPartyReference"] == "DEALER"
@@ -208,7 +228,10 @@ def test_fixed_float_buy_direction(fixed_float_swap, relationship):
 def test_fixed_float_sell_direction(fixed_float_swap, relationship):
     """Sell = we pay floating, counterparty pays fixed."""
     result = fixed_float_swap_to_trade_data(
-        fixed_float_swap, relationship, "SWAP-001", date(2026, 1, 5),
+        fixed_float_swap,
+        relationship,
+        "SWAP-001",
+        date(2026, 1, 5),
         buy_sell="Sell",
     )
     assert result["fixedLeg.payerPartyReference"] == "UTIL_CO"
@@ -219,14 +242,20 @@ def test_fixed_float_sell_direction(fixed_float_swap, relationship):
 
 def test_fixed_float_settlement_currency(fixed_float_swap, relationship):
     result = fixed_float_swap_to_trade_data(
-        fixed_float_swap, relationship, "SWAP-001", date(2026, 1, 5),
+        fixed_float_swap,
+        relationship,
+        "SWAP-001",
+        date(2026, 1, 5),
     )
     assert result["settlementCurrency"] == "USD"
 
 
 def test_fixed_float_custom_trade_type(fixed_float_swap, relationship):
     result = fixed_float_swap_to_trade_data(
-        fixed_float_swap, relationship, "SWAP-001", date(2026, 1, 5),
+        fixed_float_swap,
+        relationship,
+        "SWAP-001",
+        date(2026, 1, 5),
         trade_type="amendTrade",
     )
     assert result["tradeType"] == "amendTrade"
@@ -234,7 +263,10 @@ def test_fixed_float_custom_trade_type(fixed_float_swap, relationship):
 
 def test_fixed_float_traders(fixed_float_swap, relationship):
     result = fixed_float_swap_to_trade_data(
-        fixed_float_swap, relationship, "SWAP-001", date(2026, 1, 5),
+        fixed_float_swap,
+        relationship,
+        "SWAP-001",
+        date(2026, 1, 5),
         internal_trader="JSmith",
         external_trader="JDoe",
     )
@@ -246,14 +278,26 @@ def test_fixed_float_traders(fixed_float_swap, relationship):
 def test_fixed_float_has_all_required_pipeline_keys(fixed_float_swap, relationship):
     """Verify all keys required by the booking pipeline are present."""
     result = fixed_float_swap_to_trade_data(
-        fixed_float_swap, relationship, "SWAP-001", date(2026, 1, 5),
+        fixed_float_swap,
+        relationship,
+        "SWAP-001",
+        date(2026, 1, 5),
     )
     required_keys = [
-        "trade_id", "trade_date", "tradeType", "instrument",
-        "counterparty", "portfolio", "traders",
-        "effective_date", "termination_date", "settlementCurrency",
-        "fixedLeg.price", "fixedLeg.quantity",
-        "floatingLeg.instrumentId", "floatingLeg.quantity",
+        "trade_id",
+        "trade_date",
+        "tradeType",
+        "instrument",
+        "counterparty",
+        "portfolio",
+        "traders",
+        "effective_date",
+        "termination_date",
+        "settlementCurrency",
+        "fixedLeg.price",
+        "fixedLeg.quantity",
+        "floatingLeg.instrumentId",
+        "floatingLeg.quantity",
     ]
     for key in required_keys:
         assert key in result, f"Missing required key: {key}"
@@ -266,21 +310,30 @@ def test_fixed_float_has_all_required_pipeline_keys(fixed_float_swap, relationsh
 
 def test_basis_swap_returns_dict(basis_swap_fixture, relationship):
     result = basis_swap_to_trade_data(
-        basis_swap_fixture, relationship, "BASIS-001", date(2026, 1, 5),
+        basis_swap_fixture,
+        relationship,
+        "BASIS-001",
+        date(2026, 1, 5),
     )
     assert isinstance(result, dict)
 
 
 def test_basis_swap_instrument_type(basis_swap_fixture, relationship):
     result = basis_swap_to_trade_data(
-        basis_swap_fixture, relationship, "BASIS-001", date(2026, 1, 5),
+        basis_swap_fixture,
+        relationship,
+        "BASIS-001",
+        date(2026, 1, 5),
     )
     assert result["instrument"] == "calender_spread_flfl"
 
 
 def test_basis_swap_base_fields(basis_swap_fixture, relationship):
     result = basis_swap_to_trade_data(
-        basis_swap_fixture, relationship, "BASIS-001", date(2026, 1, 5),
+        basis_swap_fixture,
+        relationship,
+        "BASIS-001",
+        date(2026, 1, 5),
     )
     assert result["trade_id"] == "BASIS-001"
     assert result["trade_date"] == "2026-01-05"
@@ -290,7 +343,10 @@ def test_basis_swap_base_fields(basis_swap_fixture, relationship):
 
 def test_basis_swap_dates(basis_swap_fixture, relationship):
     result = basis_swap_to_trade_data(
-        basis_swap_fixture, relationship, "BASIS-001", date(2026, 1, 5),
+        basis_swap_fixture,
+        relationship,
+        "BASIS-001",
+        date(2026, 1, 5),
     )
     assert result["effective_date"] == "2026-01-01"
     assert result["termination_date"] == "2026-12-31"
@@ -298,7 +354,10 @@ def test_basis_swap_dates(basis_swap_fixture, relationship):
 
 def test_basis_swap_leg1_fields(basis_swap_fixture, relationship):
     result = basis_swap_to_trade_data(
-        basis_swap_fixture, relationship, "BASIS-001", date(2026, 1, 5),
+        basis_swap_fixture,
+        relationship,
+        "BASIS-001",
+        date(2026, 1, 5),
     )
     assert result["floatLeg1.instrumentId"] == "NATURAL_GAS-HENRY_HUB"
     assert result["floatLeg1.quantity"] == 10000.0
@@ -307,7 +366,10 @@ def test_basis_swap_leg1_fields(basis_swap_fixture, relationship):
 
 def test_basis_swap_leg2_fields(basis_swap_fixture, relationship):
     result = basis_swap_to_trade_data(
-        basis_swap_fixture, relationship, "BASIS-001", date(2026, 1, 5),
+        basis_swap_fixture,
+        relationship,
+        "BASIS-001",
+        date(2026, 1, 5),
     )
     assert result["floatLeg2.instrumentId"] == "NATURAL_GAS-ALGONQUIN"
     assert result["floatLeg2.quantity"] == 10000.0
@@ -316,7 +378,10 @@ def test_basis_swap_leg2_fields(basis_swap_fixture, relationship):
 
 def test_basis_swap_spread(basis_swap_fixture, relationship):
     result = basis_swap_to_trade_data(
-        basis_swap_fixture, relationship, "BASIS-001", date(2026, 1, 5),
+        basis_swap_fixture,
+        relationship,
+        "BASIS-001",
+        date(2026, 1, 5),
     )
     assert result["floatLeg2.spreadAmount"] == 0.75
 
@@ -324,7 +389,10 @@ def test_basis_swap_spread(basis_swap_fixture, relationship):
 def test_basis_swap_buy_direction(basis_swap_fixture, relationship):
     """Buy = we pay leg_a, counterparty pays leg_b."""
     result = basis_swap_to_trade_data(
-        basis_swap_fixture, relationship, "BASIS-001", date(2026, 1, 5),
+        basis_swap_fixture,
+        relationship,
+        "BASIS-001",
+        date(2026, 1, 5),
         buy_sell="Buy",
     )
     assert result["floatLeg1.payerPartyReference"] == "DEALER"
@@ -336,7 +404,10 @@ def test_basis_swap_buy_direction(basis_swap_fixture, relationship):
 def test_basis_swap_sell_direction(basis_swap_fixture, relationship):
     """Sell = counterparty pays leg_a, we pay leg_b."""
     result = basis_swap_to_trade_data(
-        basis_swap_fixture, relationship, "BASIS-001", date(2026, 1, 5),
+        basis_swap_fixture,
+        relationship,
+        "BASIS-001",
+        date(2026, 1, 5),
         buy_sell="Sell",
     )
     assert result["floatLeg1.payerPartyReference"] == "UTIL_CO"
@@ -348,14 +419,26 @@ def test_basis_swap_sell_direction(basis_swap_fixture, relationship):
 def test_basis_swap_has_all_required_pipeline_keys(basis_swap_fixture, relationship):
     """Verify all keys required by the booking pipeline are present."""
     result = basis_swap_to_trade_data(
-        basis_swap_fixture, relationship, "BASIS-001", date(2026, 1, 5),
+        basis_swap_fixture,
+        relationship,
+        "BASIS-001",
+        date(2026, 1, 5),
     )
     required_keys = [
-        "trade_id", "trade_date", "tradeType", "instrument",
-        "counterparty", "portfolio", "traders",
-        "effective_date", "termination_date", "settlementCurrency",
-        "floatLeg1.instrumentId", "floatLeg1.quantity",
-        "floatLeg2.instrumentId", "floatLeg2.quantity",
+        "trade_id",
+        "trade_date",
+        "tradeType",
+        "instrument",
+        "counterparty",
+        "portfolio",
+        "traders",
+        "effective_date",
+        "termination_date",
+        "settlementCurrency",
+        "floatLeg1.instrumentId",
+        "floatLeg1.quantity",
+        "floatLeg2.instrumentId",
+        "floatLeg2.quantity",
     ]
     for key in required_keys:
         assert key in result, f"Missing required key: {key}"
@@ -371,7 +454,10 @@ def test_fixed_float_output_compatible_with_swap_model(fixed_float_swap, relatio
     from hgraph_trade.hgraph_trade_model.swap import create_commodity_swap
 
     trade_data = fixed_float_swap_to_trade_data(
-        fixed_float_swap, relationship, "INTEG-001", date(2026, 1, 5),
+        fixed_float_swap,
+        relationship,
+        "INTEG-001",
+        date(2026, 1, 5),
     )
     result = create_commodity_swap(trade_data, sub_instrument_type="fixedFloat")
 
@@ -392,7 +478,10 @@ def test_basis_swap_output_compatible_with_swap_model(basis_swap_fixture, relati
     from hgraph_trade.hgraph_trade_model.swap import create_commodity_swap
 
     trade_data = basis_swap_to_trade_data(
-        basis_swap_fixture, relationship, "INTEG-002", date(2026, 1, 5),
+        basis_swap_fixture,
+        relationship,
+        "INTEG-002",
+        date(2026, 1, 5),
     )
     result = create_commodity_swap(trade_data, sub_instrument_type="floatFloat")
 

@@ -10,7 +10,6 @@ from hgraph_oap_adapter.party_adapter import (
     relationship_to_trade_parties,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -95,10 +94,16 @@ def test_counterparty_row_has_all_static_admin_columns(dealer):
     """Verify all columns from the static admin counterparties table."""
     result = legal_entity_to_counterparty_row(dealer)
     expected_columns = [
-        "legal_name", "short_name",
-        "identifier1", "identifier2", "identifier3", "identifier4",
-        "cleared_otc", "dropcopy_enabled",
-        "notification_preferences", "notification_contacts",
+        "legal_name",
+        "short_name",
+        "identifier1",
+        "identifier2",
+        "identifier3",
+        "identifier4",
+        "cleared_otc",
+        "dropcopy_enabled",
+        "notification_preferences",
+        "notification_contacts",
     ]
     for col in expected_columns:
         assert col in result, f"Missing column: {col}"
@@ -174,10 +179,14 @@ def test_trade_parties_empty_portfolios():
     """Relationship with no portfolios should produce empty strings."""
     rel = TradingRelationship(
         internal_party=LegalEntity(
-            symbol="A", name="A", classification=PartyClassification.SWAP_DEALER,
+            symbol="A",
+            name="A",
+            classification=PartyClassification.SWAP_DEALER,
         ),
         external_party=LegalEntity(
-            symbol="B", name="B", classification=PartyClassification.FINANCIAL_ENTITY,
+            symbol="B",
+            name="B",
+            classification=PartyClassification.FINANCIAL_ENTITY,
         ),
     )
     result = relationship_to_trade_parties(rel)
@@ -196,10 +205,15 @@ def test_trade_parties_has_all_required_pipeline_keys(relationship):
     """Verify all party-related keys expected by the booking pipeline."""
     result = relationship_to_trade_parties(relationship)
     required_keys = [
-        "internal_party", "external_party",
-        "counterparty", "portfolio", "traders",
-        "internal_portfolio", "external_portfolio",
-        "internal_trader", "external_trader",
+        "internal_party",
+        "external_party",
+        "counterparty",
+        "portfolio",
+        "traders",
+        "internal_portfolio",
+        "external_portfolio",
+        "internal_trader",
+        "external_trader",
     ]
     for key in required_keys:
         assert key in result, f"Missing required key: {key}"

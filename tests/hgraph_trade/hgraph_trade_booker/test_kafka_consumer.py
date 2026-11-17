@@ -6,7 +6,6 @@ import pytest
 
 from hgraph_trade.hgraph_trade_booker.kafka_consumer import KafkaReceiver
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

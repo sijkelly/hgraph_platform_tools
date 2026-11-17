@@ -100,9 +100,7 @@ def _fixed_leg_fields(
         "fixedLeg.priceCurrency": _unit_str(leg.currency.unit),
         "fixedLeg.priceUnit": _unit_str(leg.notional_quantity.unit),
         "fixedLeg.quantityUnit": _unit_str(leg.notional_quantity.unit),
-        "fixedLeg.quantityFrequency": _FREQUENCY_MAP.get(
-            leg.payment_frequency, "PerCalendarMonth"
-        ),
+        "fixedLeg.quantityFrequency": _FREQUENCY_MAP.get(leg.payment_frequency, "PerCalendarMonth"),
         "fixedLeg.quantity": leg.notional_quantity.qty,
     }
 
@@ -121,9 +119,7 @@ def _floating_leg_fields(
         f"{prefix}.instrumentId": leg.index.symbol,
         f"{prefix}.specifiedPrice": "Settlement",
         f"{prefix}.quantityUnit": _unit_str(leg.notional_quantity.unit),
-        f"{prefix}.quantityFrequency": _FREQUENCY_MAP.get(
-            leg.payment_frequency, "PerCalendarMonth"
-        ),
+        f"{prefix}.quantityFrequency": _FREQUENCY_MAP.get(leg.payment_frequency, "PerCalendarMonth"),
         f"{prefix}.quantity": leg.notional_quantity.qty,
     }
     if leg.spread is not None:
@@ -197,9 +193,7 @@ def fixed_float_swap_to_trade_data(
     )
 
     data.update(_fixed_leg_fields(swap.fixed_leg, fixed_payer, fixed_receiver))
-    data.update(
-        _floating_leg_fields(swap.floating_leg, float_payer, float_receiver)
-    )
+    data.update(_floating_leg_fields(swap.floating_leg, float_payer, float_receiver))
 
     return data
 
@@ -261,15 +255,7 @@ def basis_swap_to_trade_data(
         }
     )
 
-    data.update(
-        _floating_leg_fields(
-            swap.leg_a, leg1_payer, leg1_receiver, prefix="floatLeg1"
-        )
-    )
-    data.update(
-        _floating_leg_fields(
-            swap.leg_b, leg2_payer, leg2_receiver, prefix="floatLeg2"
-        )
-    )
+    data.update(_floating_leg_fields(swap.leg_a, leg1_payer, leg1_receiver, prefix="floatLeg1"))
+    data.update(_floating_leg_fields(swap.leg_b, leg2_payer, leg2_receiver, prefix="floatLeg2"))
 
     return data

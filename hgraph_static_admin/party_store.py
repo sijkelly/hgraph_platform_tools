@@ -22,6 +22,8 @@ from hg_oap.parties.agreement import MasterAgreement, MasterAgreementType
 from hg_oap.parties.party import LegalEntity, PartyClassification
 from hg_oap.parties.relationship import ClearingStatus, TradingRelationship
 
+from hgraph_oms.db import connect, get_database
+
 __all__ = (
     "init_party_db",
     "upsert_legal_entity",
@@ -64,7 +66,7 @@ CREATE TABLE IF NOT EXISTS trading_relationships (
     isda_version TEXT,
     isda_date TEXT,
     isda_csa INTEGER DEFAULT 0,
-    isda_threshold REAL,
+    isda_threshold DOUBLE PRECISION,
     isda_governing_law TEXT,
     naesb_type TEXT,
     naesb_version TEXT,
@@ -140,9 +142,12 @@ def _row_to_agreement(row: Dict[str, Any], prefix: str) -> MasterAgreement | Non
 def init_party_db(db_path: str) -> None:
     """Create the ``legal_entities`` and ``trading_relationships`` tables.
 
-    :param db_path: Path to the SQLite database file.
+    :param db_path: SQLite file path or PostgreSQL URL.
     """
-    conn = sqlite3.connect(db_path)
+    database = get_database(db_path)
+    if not database.needs_init("party"):
+        return
+    conn = connect(db_path)
     try:
         conn.execute("PRAGMA journal_mode = WAL")
         conn.execute("PRAGMA foreign_keys = ON")
@@ -151,7 +156,7 @@ def init_party_db(db_path: str) -> None:
         conn.commit()
     finally:
         conn.close()
-    logger.info("Party database initialised at %s", db_path)
+    logger.info("Party database initialised at %s", database.description)
 
 
 # ---------------------------------------------------------------------------
@@ -162,10 +167,10 @@ def init_party_db(db_path: str) -> None:
 def upsert_legal_entity(db_path: str, entity: LegalEntity) -> None:
     """Insert or update a legal entity record.
 
-    :param db_path: Path to the SQLite database file.
+    :param db_path: SQLite file path or PostgreSQL URL.
     :param entity: The legal entity to store.
     """
-    conn = sqlite3.connect(db_path)
+    conn = connect(db_path)
     try:
         conn.execute(
             """
@@ -203,16 +208,14 @@ def upsert_legal_entity(db_path: str, entity: LegalEntity) -> None:
 def get_legal_entity(db_path: str, symbol: str) -> LegalEntity | None:
     """Retrieve a legal entity by symbol.
 
-    :param db_path: Path to the SQLite database file.
+    :param db_path: SQLite file path or PostgreSQL URL.
     :param symbol: The entity's short identifier.
     :returns: The :class:`LegalEntity`, or ``None`` if not found.
     """
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
+    conn = connect(db_path)
+    conn.row_factory = sqlite3.Row  # rows by column name (PostgreSQL rows always are)
     try:
-        row = conn.execute(
-            "SELECT * FROM legal_entities WHERE symbol = ?", (symbol,)
-        ).fetchone()
+        row = conn.execute("SELECT * FROM legal_entities WHERE symbol = ?", (symbol,)).fetchone()
     finally:
         conn.close()
 
@@ -234,15 +237,13 @@ def get_legal_entity(db_path: str, symbol: str) -> LegalEntity | None:
 def get_all_legal_entities(db_path: str) -> List[LegalEntity]:
     """Return all legal entities.
 
-    :param db_path: Path to the SQLite database file.
+    :param db_path: SQLite file path or PostgreSQL URL.
     :returns: List of :class:`LegalEntity` instances.
     """
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
+    conn = connect(db_path)
+    conn.row_factory = sqlite3.Row  # rows by column name (PostgreSQL rows always are)
     try:
-        rows = conn.execute(
-            "SELECT * FROM legal_entities ORDER BY symbol"
-        ).fetchall()
+        rows = conn.execute("SELECT * FROM legal_entities ORDER BY symbol").fetchall()
     finally:
         conn.close()
 
@@ -264,15 +265,13 @@ def get_all_legal_entities(db_path: str) -> List[LegalEntity]:
 def delete_legal_entity(db_path: str, symbol: str) -> bool:
     """Delete a legal entity by symbol.
 
-    :param db_path: Path to the SQLite database file.
+    :param db_path: SQLite file path or PostgreSQL URL.
     :param symbol: The entity's short identifier.
     :returns: ``True`` if a row was deleted, ``False`` if not found.
     """
-    conn = sqlite3.connect(db_path)
+    conn = connect(db_path)
     try:
-        cursor = conn.execute(
-            "DELETE FROM legal_entities WHERE symbol = ?", (symbol,)
-        )
+        cursor = conn.execute("DELETE FROM legal_entities WHERE symbol = ?", (symbol,))
         conn.commit()
         return cursor.rowcount > 0
     finally:
@@ -287,14 +286,14 @@ def delete_legal_entity(db_path: str, symbol: str) -> bool:
 def upsert_trading_relationship(db_path: str, relationship: TradingRelationship) -> None:
     """Insert or update a trading relationship record.
 
-    :param db_path: Path to the SQLite database file.
+    :param db_path: SQLite file path or PostgreSQL URL.
     :param relationship: The trading relationship to store.
     """
     isda_cols = _agreement_to_row(relationship.isda, "isda")
     naesb_cols = _agreement_to_row(relationship.naesb, "naesb")
     eei_cols = _agreement_to_row(relationship.eei, "eei")
 
-    conn = sqlite3.connect(db_path)
+    conn = connect(db_path)
     try:
         conn.execute(
             """
@@ -360,13 +359,13 @@ def get_trading_relationship(
 
     Both the internal and external party must exist in ``legal_entities``.
 
-    :param db_path: Path to the SQLite database file.
+    :param db_path: SQLite file path or PostgreSQL URL.
     :param internal_symbol: Internal party symbol.
     :param external_symbol: External party symbol.
     :returns: The :class:`TradingRelationship`, or ``None`` if not found.
     """
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
+    conn = connect(db_path)
+    conn.row_factory = sqlite3.Row  # rows by column name (PostgreSQL rows always are)
     try:
         row = conn.execute(
             """SELECT * FROM trading_relationships
@@ -407,11 +406,11 @@ def get_trading_relationship(
 def get_all_trading_relationships(db_path: str) -> List[TradingRelationship]:
     """Return all trading relationships.
 
-    :param db_path: Path to the SQLite database file.
+    :param db_path: SQLite file path or PostgreSQL URL.
     :returns: List of :class:`TradingRelationship` instances.
     """
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
+    conn = connect(db_path)
+    conn.row_factory = sqlite3.Row  # rows by column name (PostgreSQL rows always are)
     try:
         rows = conn.execute(
             "SELECT * FROM trading_relationships ORDER BY internal_party_symbol, external_party_symbol"
@@ -434,12 +433,12 @@ def delete_trading_relationship(
 ) -> bool:
     """Delete a trading relationship by party symbols.
 
-    :param db_path: Path to the SQLite database file.
+    :param db_path: SQLite file path or PostgreSQL URL.
     :param internal_symbol: Internal party symbol.
     :param external_symbol: External party symbol.
     :returns: ``True`` if a row was deleted, ``False`` if not found.
     """
-    conn = sqlite3.connect(db_path)
+    conn = connect(db_path)
     try:
         cursor = conn.execute(
             """DELETE FROM trading_relationships

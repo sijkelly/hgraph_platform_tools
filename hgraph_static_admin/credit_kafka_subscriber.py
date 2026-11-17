@@ -108,10 +108,7 @@ def parse_credit_limit_message(msg: Dict[str, Any]) -> Tuple[str, CreditLimit | 
 
     limit_type = _LIMIT_TYPE_MAP.get(limit_type_str)
     if limit_type is None:
-        raise ValueError(
-            f"Unknown limit_type: {limit_type_str!r}. "
-            f"Expected one of: {list(_LIMIT_TYPE_MAP.keys())}"
-        )
+        raise ValueError(f"Unknown limit_type: {limit_type_str!r}. " f"Expected one of: {list(_LIMIT_TYPE_MAP.keys())}")
 
     limit_amount = msg.get("limit_amount")
     if limit_amount is None:
@@ -126,10 +123,7 @@ def parse_credit_limit_message(msg: Dict[str, Any]) -> Tuple[str, CreditLimit | 
     status_str = msg.get("status", "Active")
     status = _STATUS_MAP.get(status_str)
     if status is None:
-        raise ValueError(
-            f"Unknown status: {status_str!r}. "
-            f"Expected one of: {list(_STATUS_MAP.keys())}"
-        )
+        raise ValueError(f"Unknown status: {status_str!r}. " f"Expected one of: {list(_STATUS_MAP.keys())}")
 
     effective_date = None
     if msg.get("effective_date"):
@@ -237,14 +231,10 @@ class CreditKafkaSubscriber:
         self.db_path = db_path
         self.bootstrap_servers = bootstrap_servers or config["KAFKA_BOOTSTRAP_SERVERS"]
         self.group_id = group_id or config.get("KAFKA_CONSUMER_GROUP", "hgraph_platform")
-        self.limit_topic = limit_topic or config.get(
-            "CREDIT_KAFKA_LIMIT_TOPIC", "credit.limit"
-        )
-        self.utilization_topic = utilization_topic or config.get(
-            "CREDIT_KAFKA_UTILIZATION_TOPIC", "credit.utilization"
-        )
+        self.limit_topic = limit_topic or config.get("CREDIT_KAFKA_LIMIT_TOPIC", "credit.limit")
+        self.utilization_topic = utilization_topic or config.get("CREDIT_KAFKA_UTILIZATION_TOPIC", "credit.utilization")
         self._running = False
-        self._receiver = None
+        self._receiver: Any = None  # KafkaReceiver, imported lazily in start()
         self._processed_count = 0
 
     def start(self, *, poll_interval_ms: int = 1000, max_messages: int | None = None) -> None:
@@ -335,7 +325,7 @@ class CreditKafkaSubscriber:
         action, credit_limit = parse_credit_limit_message(message)
         cpty = message["counterparty_symbol"]
 
-        if action == "UPSERT":
+        if action == "UPSERT" and credit_limit is not None:
             upsert_credit_limit(self.db_path, credit_limit)
             logger.info("Upserted credit limit: %s / %s", cpty, credit_limit.limit_type.value)
         elif action == "DELETE":

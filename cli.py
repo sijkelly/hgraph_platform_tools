@@ -267,13 +267,13 @@ def _add_party_subscribe_parser(subparsers: argparse._SubParsersAction) -> None:
 
 def _run_party_subscribe(args: argparse.Namespace) -> int:
     from secure_config import config
+    from hgraph_oms.settings import database_target
     from hgraph_static_admin.party_store import init_party_db
 
-    db_path = args.db_path or config["PARTY_DB_PATH"]
+    db_path = args.db_path or database_target(config["PARTY_DB_PATH"])
 
     if args.init_db:
         init_party_db(db_path)
-        logger.info("Party database initialised at %s", db_path)
         if not args.bootstrap_servers:
             return 0  # Just init, don't start subscriber
 
@@ -312,13 +312,13 @@ def _add_portfolio_subscribe_parser(subparsers: argparse._SubParsersAction) -> N
 
 def _run_portfolio_subscribe(args: argparse.Namespace) -> int:
     from secure_config import config
+    from hgraph_oms.settings import database_target
     from hgraph_static_admin.portfolio_store import init_portfolio_db
 
-    db_path = args.db_path or config["PORTFOLIO_DB_PATH"]
+    db_path = args.db_path or database_target(config["PORTFOLIO_DB_PATH"])
 
     if args.init_db:
         init_portfolio_db(db_path)
-        logger.info("Portfolio database initialised at %s", db_path)
         if not args.bootstrap_servers:
             return 0  # Just init, don't start subscriber
 
@@ -400,13 +400,13 @@ def _add_credit_subscribe_parser(subparsers: argparse._SubParsersAction) -> None
 
 def _run_credit_subscribe(args: argparse.Namespace) -> int:
     from secure_config import config
+    from hgraph_oms.settings import database_target
     from hgraph_static_admin.credit_store import init_credit_db
 
-    db_path = args.db_path or config["CREDIT_DB_PATH"]
+    db_path = args.db_path or database_target(config["CREDIT_DB_PATH"])
 
     if args.init_db:
         init_credit_db(db_path)
-        logger.info("Credit database initialised at %s", db_path)
         if not args.bootstrap_servers:
             return 0  # Just init, don't start subscriber
 
@@ -471,6 +471,45 @@ def _run_serve(args: argparse.Namespace) -> int:
 
 
 # ---------------------------------------------------------------------------
+# Subcommand: mcp
+# ---------------------------------------------------------------------------
+def _add_mcp_parser(subparsers: argparse._SubParsersAction) -> None:
+    p = subparsers.add_parser("mcp", help="Start the MCP server that gives an AI agent access to the OMS API")
+    p.add_argument("--api-url", type=str, default="http://localhost:8000", help="Base URL of the OMS API")
+    p.add_argument(
+        "--user-id",
+        type=str,
+        default="ai-agent",
+        help="User ID the agent acts as when the API trusts X-User-Id (development). Against an API that "
+        "requires tokens, set OMS_TOKEN_URL, OMS_CLIENT_ID and OMS_CLIENT_SECRET, or OMS_API_TOKEN, instead",
+    )
+    p.set_defaults(func=_run_mcp)
+
+
+def _run_mcp(args: argparse.Namespace) -> int:
+    import httpx
+
+    from hgraph_api.client_auth import client_auth_from_env
+    from hgraph_api.mcp_server import OmsApiTools, build_server
+
+    # The MCP stdio transport owns stdout, so all logging must go to stderr
+    for handler in logging.getLogger().handlers:
+        if isinstance(handler, logging.StreamHandler) and getattr(handler, "stream", None) is sys.stdout:
+            handler.setStream(sys.stderr)
+
+    try:
+        auth = client_auth_from_env()
+    except ValueError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 1
+    # With a token the API takes the agent's identity from it, and ignores X-User-Id
+    headers = {} if auth else {"X-User-Id": args.user_id}
+    with httpx.Client(base_url=args.api_url, headers=headers, auth=auth, timeout=30.0) as http:
+        build_server(OmsApiTools(http)).run("stdio")
+    return 0
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 def main() -> None:
@@ -496,6 +535,7 @@ def main() -> None:
     _add_ev_rate_subscribe_parser(subparsers)
     _add_credit_subscribe_parser(subparsers)
     _add_serve_parser(subparsers)
+    _add_mcp_parser(subparsers)
 
     args = parser.parse_args()
 

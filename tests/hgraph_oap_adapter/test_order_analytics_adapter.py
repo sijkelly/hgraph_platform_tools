@@ -22,7 +22,6 @@ from hgraph_oap_adapter.order_analytics_adapter import (
     order_to_lifecycle_dict,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -105,10 +104,24 @@ def missed_outcome():
 def test_lifecycle_dict_keys(received_event):
     d = order_to_lifecycle_dict(received_event)
     expected_keys = {
-        "event_id", "order_id", "timestamp", "state", "salesperson_id",
-        "desk", "instrument_category", "underlying_asset", "counterparty",
-        "notional_qty", "notional_unit", "price", "price_currency",
-        "ev_amount", "ev_currency", "missed_reason", "missed_detail", "notes",
+        "event_id",
+        "order_id",
+        "timestamp",
+        "state",
+        "salesperson_id",
+        "desk",
+        "instrument_category",
+        "underlying_asset",
+        "counterparty",
+        "notional_qty",
+        "notional_unit",
+        "price",
+        "price_currency",
+        "ev_amount",
+        "ev_currency",
+        "missed_reason",
+        "missed_detail",
+        "notes",
     }
     assert set(d.keys()) == expected_keys
 
