@@ -51,6 +51,25 @@ uv pip install -e ".[dev]"
 uv run pytest tests/ -q
 ```
 
+### Upstream dependencies
+
+- **hgraph** comes from PyPI, pinned to the C++-backed 0.8 line (``>=0.8.40,<0.9``); ``uv.lock`` pins the
+  exact release the Docker image is built with.
+- **hg-oap** comes from Simon's fork, **not PyPI**: ``sijkelly/hg_oap`` branch ``simon/extensions``
+  (upstream ``hhenson/hg_oap`` plus the parties, credit, regulatory, swap/swaption and sales-order modules).
+  ``[tool.uv.sources]`` installs it from the sibling ``../hg_oap`` clone; CI checks it out there, and the Docker
+  build takes it as the ``hg_oap`` build context.
+
+### Automated checks (``.github/workflows/``)
+
+| Workflow | When | What |
+|----------|------|------|
+| ``ci.yml`` | push to ``main``, every PR | Black, mypy, pytest (SQLite and PostgreSQL); builds and smoke-tests the image |
+| ``upstream-check.yml`` | Mondays 06:00 UTC, manual | Upgrades hgraph in ``uv.lock``; green → PR ``automation/upstream-upgrade``, red → issue labelled ``upstream-break`` |
+| ``hg-oap-fork-check.yml`` | Mondays 07:00 UTC, manual | Rebases ``simon/extensions`` onto ``hhenson/hg_oap`` main (never pushes), runs both test suites, reports via issue labelled ``hg-oap-fork`` |
+
+Run one by hand: ``gh workflow run upstream-check.yml``.
+
 ---
 
 ## Testing
