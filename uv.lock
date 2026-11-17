@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 5
 requires-python = ">=3.12"
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'win32'",
@@ -521,7 +521,7 @@ provides-extras = ["docs", "test"]
 
 [[package]]
 name = "hgraph"
-version = "0.8.40"
+version = "0.8.41"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "frozendict" },
@@ -530,11 +530,11 @@ dependencies = [
     { name = "pyarrow" },
     { name = "pyyaml" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/8b/7a/9ba2f4f0e2647baac3e407c43a966ce8add4fde04d61bae4872bf5423b5d/hgraph-0.8.40.tar.gz", hash = "sha256:c4b953719786060d5f063f98e6b5139169f163cec835b4a33dfc7d95e64dc3a6", size = 11911235, upload-time = "2026-10-30T15:42:56.81Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c8/41/8f081cfa1fa077e2605a93ee53be16c123bd8d21fa8b20230d2c3d7e6907/hgraph-0.8.41.tar.gz", hash = "sha256:8ce7797687274a94439825840f11a9b5354fd55eb930e9c39fd8d015cb010ce1", size = 11935827, upload-time = "2026-11-16T13:20:32.119Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/3f/b5/06f797c668e0ab75af1e0ef8fbb0564b19580bb2c64a1d27f171b997c3a4/hgraph-0.8.40-cp312-abi3-macosx_26_0_arm64.whl", hash = "sha256:2e3f12006ba8ba995bb7bd959026b803bc247572dc7e7f32dc3866a5eba3d595", size = 12344443, upload-time = "2026-10-30T15:42:49.656Z" },
-    { url = "https://files.pythonhosted.org/packages/64/d9/bb33d43e8bcc97ea42450b202ba8a69eb20934679062a500220927380b04/hgraph-0.8.40-cp312-abi3-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:063a6b0dc925ab70660af8be809033ba63c6b70ff1b7d40e48057b2f49a6bf9c", size = 11817342, upload-time = "2026-10-30T15:42:52.315Z" },
-    { url = "https://files.pythonhosted.org/packages/b2/0c/786fdb34ffb5847dc38104d0ac8486950a087d0cc28df4bfa258060c6f4c/hgraph-0.8.40-cp312-abi3-win_amd64.whl", hash = "sha256:c66e5bc3a8909647e90974e9b4204a8878fd91bad2a996915891a34d21841742", size = 17894044, upload-time = "2026-10-30T15:42:54.592Z" },
+    { url = "https://files.pythonhosted.org/packages/96/04/b703b0a11850285256dcb13eea88555292b597264ab938868143158eafe2/hgraph-0.8.41-cp312-abi3-macosx_26_0_arm64.whl", hash = "sha256:b29c2dd014a7a2dbc11bac704a8029a5ce6b6900876d35555d7f3fd00244ac8a", size = 12343740, upload-time = "2026-11-16T13:20:22.791Z" },
+    { url = "https://files.pythonhosted.org/packages/ed/ec/40dc65b07d5f99f9080d7ecf106aef750f5294a24225e976df913a904b2b/hgraph-0.8.41-cp312-abi3-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:8d61141e83ef3640492be6a56b6ebab9bf7146a16ba8c40f80f928c8c138cad1", size = 11819655, upload-time = "2026-11-16T13:20:26.153Z" },
+    { url = "https://files.pythonhosted.org/packages/b1/c3/ed042797c1216c7610494c8fba45cb2179eda252418e87c54576aea2ef05/hgraph-0.8.41-cp312-abi3-win_amd64.whl", hash = "sha256:09948d1566c6cbb056136a4a70d8a0c1d102cb12f358cd98a0f2f20a2da5da1a", size = 17896234, upload-time = "2026-11-16T13:20:29.111Z" },
 ]
 
 [package.optional-dependencies]
@@ -706,8 +706,8 @@ name = "httpcore2"
 version = "2.16.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "h11", marker = "sys_platform != 'emscripten'" },
-    { name = "truststore", marker = "sys_platform != 'emscripten'" },
+    { name = "h11" },
+    { name = "truststore" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/c0/61/afa9d6b7452f9eca73f73d45324eb0bb52f098fd5e6049bf6b8263be9b4e/httpcore2-2.16.0.tar.gz", hash = "sha256:c72cd0413563b17e1cd8354677dff887466f8ec2551679759e93126534428643", size = 69886, upload-time = "2026-10-21T07:09:45.31Z" }
 wheels = [
